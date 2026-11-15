@@ -1,7 +1,7 @@
 # ATHELIER — Protocolo de desarrollo colaborativo y autorización de producción
 
 **Aprobado como regla operativa:** 15 de noviembre de 2026.  
-**Estado de incorporación técnica:** documentación propuesta en rama/PR; las protecciones técnicas de GitHub y la configuración de Vercel deben verificarse y activarse por un administrador antes de declararlas obligatorias.  
+**Estado de incorporación técnica:** documentación propuesta en rama/PR. GitHub confirmó que `main` no está protegida (`protected: false`); debe configurarse protección técnica por un administrador antes de declarar este control obligatorio. Revisar también configuración de Vercel.  
 **Vigencia:** aplica a todos los cambios futuros del repositorio, sin sustituir las decisiones funcionales del Prompt Maestro de Continuidad.
 
 ## 1. Objetivo y jerarquía
@@ -149,9 +149,9 @@ Una conversación o documento describe intenciones; GitHub/Vercel/Firebase confi
 
 - Conexión GitHub consultada en la preparación: usuario técnico autenticado `nixinxcom`. **No se ha comprobado mediante control independiente que sea el identificador de liberación designado por Alain**.
 - Consulta a `/repos/Athelier-Ventures/athelier/rulesets`: lista vacía en el corte.
-- Lectura de `branches/main/protection`: error 403 de la integración; no se puede verificar la protección de rama por ese endpoint.
+- Lectura de `/repos/Athelier-Ventures/athelier/branches/main`: **`protected: false`**, evidencia de que `main` NO tiene protección activa al corte. El subendpoint `/protection` arrojó 403 de la integración; esta limitación no invalida la evidencia anterior.
 - El conjunto de herramientas de GitHub disponible para este trabajo permite leer repositorios, ramas y PRs, pero **no expone una acción administrativa para crear Rulesets/Branch Protection**.
-- Por tanto, **la restricción técnica de merge/push a producción queda PENDIENTE de configuración y posterior verificación por administrador GitHub**. Hasta entonces, no se debe considerar segura por el solo protocolo.
+- Por tanto, **la restricción técnica de merge/push a producción está CONFIRMADA COMO AUSENTE y queda PENDIENTE de configuración y posterior verificación por administrador GitHub**. Hasta entonces, no se debe considerar segura por el solo protocolo.
 - Debe verificarse en Vercel la rama de producción y cualquier despliegue externo/manual capaz de saltarse el PR, además de permisos de despliegue.
 - El control de identidad/roles debe asociarse a usuarios GitHub y permisos de equipo verificados. Una regla que exige «1 aprobación» sin restringir quién revisa **no basta** para garantizar que sólo Alain libere.
 
