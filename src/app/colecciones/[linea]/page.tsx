@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CollectionCatalog from "./catalog-client";
 import { notFound } from "next/navigation";
 import { businessLines, findBusinessLine } from "@/lib/brand";
 
@@ -40,6 +41,7 @@ export default async function CollectionPage({ params }: PageProps) {
           No se están aceptando pedidos ni pagos desde esta vista.
         </p>
       </section>
+      <CollectionCatalog linea={linea} />
       <nav className="collection__top" aria-label="Explorar otras líneas">
         <Link className="collection__back" href="/#lineas">← Elegir otra línea de negocio</Link>
       </nav>
