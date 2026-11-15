@@ -81,7 +81,7 @@ La versión `public/athelier-hero-en.svg` **NO** es una imagen inglesa limpia. C
 ## 7. Gobierno y siguientes pasos
 
 - El control operativo se rige por [PROTOCOLO_COLABORACION_Y_PUBLICACION.md](PROTOCOLO_COLABORACION_Y_PUBLICACION.md): desarrollo del propietario en ramas/Preview; publicación sólo tras autorización de Alain, identificación válida y reglas de GitHub/Vercel efectivamente configuradas.
-- En el corte, el endpoint de GitHub Rulesets devolvió `[]`; consulta de `main` branch protection devolvió 403. La **protección técnica sigue pendiente de comprobar/configurar**. No prometer enforcement.
+- En el corte, GitHub Rulesets devolvió `[]` y la API de rama `main` informó **`protected: false`**. El subendpoint de detalles de protección devolvió 403. **La protección técnica NO está habilitada; debe configurarse y verificarse**. No prometer enforcement.
 - Actualizar esta FDV **en el mismo PR** que modifique arquitectura, negocio, seguridad o estado verificado. Toda referencia a un commit es verificable y se sustituye sólo con evidencia posterior.
 
 ## 8. Documentación histórica, leer con atención
