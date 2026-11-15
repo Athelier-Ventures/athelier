@@ -210,22 +210,80 @@ export default function AdminPage() {
           {notice && <p className="admin__notice" role="status">{notice}</p>}
           {tab === "suppliers" && (
             <section className="admin__section">
-              <h2>Proveedores</h2><p>Registra quién te vende los materiales.</p>
-              <form onSubmit={(e:FormEvent) => { e.preventDefault(); void save("suppliers",{name:supplier,active:true});}} className="admin__form">
+              <h2>Proveedores</h2><p>Crea, edita, desactiva o elimina los proveedores que no tengan compras relacionadas.</p>
+              <form onSubmit={(e:FormEvent)=>{e.preventDefault();void save("suppliers",{name:supplier,active:supplierActive},editingSupplier||undefined);}} className="admin__form">
                 <label>Nombre del proveedor<input required maxLength={180} value={supplier} onChange={e=>setSupplier(e.target.value)} placeholder="Ej. Papelería central" /></label>
-                <button disabled={loading} className="admin__button">Guardar proveedor</button>
+                <label className="admin__check"><input type="checkbox" checked={supplierActive} onChange={e=>setSupplierActive(e.target.checked)}/>Activo</label>
+                <div className="admin__actions">
+                  <button disabled={loading} className="admin__button">{editingSupplier?"Guardar cambios":"Crear proveedor"}</button>
+                  {editingSupplier&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingSupplier(null);setSupplier("");setSupplierActive(true);}}>Cancelar</button>}
+                </div>
               </form>
-              <div className="admin__records">{rows.suppliers.map(r => <div key={r.id} className="admin__record"><strong>{String(r.name)}</strong><span>{r.active ? "Activo" : "Inactivo"}</span><button type="button" disabled={loading} onClick={() => void save("suppliers",{name:r.name,active:!r.active},r.id)}>Cambiar estado</button></div>)}</div>
+              <div className="admin__records">{rows.suppliers.map(r=><div key={r.id} className="admin__record">
+                <div><strong>{String(r.name)}</strong><small>{r.active===false?"Inactivo":"Activo"}</small></div>
+                <div className="admin__actions">
+                  <button type="button" disabled={loading} onClick={()=>{setEditingSupplier(r.id);setSupplier(String(r.name));setSupplierActive(r.active!==false);}}>Editar</button>
+                  <button type="button" disabled={loading} onClick={()=>void save("suppliers",{name:r.name,active:r.active===false},r.id)}>{r.active===false?"Activar":"Desactivar"}</button>
+                  <button type="button" disabled={loading} onClick={()=>void deleteRecord("suppliers",r.id,String(r.name))}>Eliminar</button>
+                </div>
+              </div>)}</div>
+            </section>
+          )}
+          {tab === "units" && (
+            <section className="admin__section">
+              <h2>Catálogo de unidades y equivalencias</h2>
+              <p>Define cualquier unidad base (hoja, pieza, metro, litro u otra) y sus conversiones. Ejemplo: <strong>1 paquete de 100 = 100 hojas</strong>. Las equivalencias se reutilizan en presentaciones compatibles.</p>
+              <form className="admin__form" onSubmit={(e:FormEvent)=>{
+                e.preventDefault();void save("units",unitPayload(),editingUnit||undefined);
+              }}>
+                <label>Tipo de unidad<select value={unitDraft.kind} onChange={e=>setUnitDraft(u=>({...u,kind:e.target.value as UnitDraft["kind"],baseUnitId:"",unitsPerUnit:"1"}))}>
+                  <option value="base">Unidad base</option><option value="derived">Unidad de compra / conversión</option>
+                </select></label>
+                <label>Nombre<input required maxLength={180} value={unitDraft.name} onChange={e=>setUnitDraft(u=>({...u,name:e.target.value}))} placeholder={unitDraft.kind==="base"?"Hoja":"Paquete de 100 hojas"}/></label>
+                <label>Símbolo o abreviatura<input required maxLength={30} value={unitDraft.symbol} onChange={e=>setUnitDraft(u=>({...u,symbol:e.target.value}))} placeholder={unitDraft.kind==="base"?"hoja":"paq. 100"}/></label>
+                {unitDraft.kind==="derived"&&<>
+                  <label>Equivale a la unidad base<select required value={unitDraft.baseUnitId} onChange={e=>setUnitDraft(u=>({...u,baseUnitId:e.target.value}))}>
+                    <option value="">Seleccionar unidad base…</option>{unitBases.map(u=><option value={u.id} key={u.id}>{String(u.name)} ({String(u.symbol)})</option>)}
+                  </select></label>
+                  <label>Cantidad en unidades base<input type="number" min="0.000001" step="any" required value={unitDraft.unitsPerUnit} onChange={e=>setUnitDraft(u=>({...u,unitsPerUnit:e.target.value}))}/></label>
+                </>}
+                <label className="admin__check"><input type="checkbox" checked={unitDraft.active} onChange={e=>setUnitDraft(u=>({...u,active:e.target.checked}))}/>Activa</label>
+                <div className="admin__actions admin__full">
+                  <button disabled={loading || (unitDraft.kind==="derived"&&!unitDraft.baseUnitId)} className="admin__button">{editingUnit?"Guardar cambios":"Crear unidad"}</button>
+                  {editingUnit&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingUnit(null);setUnitDraft(emptyUnit());}}>Cancelar</button>}
+                </div>
+              </form>
+              <h3>Unidades registradas</h3>
+              <div className="admin__records">{rows.units.map(u=><div className="admin__record" key={u.id}>
+                <div><strong>{String(u.name)} ({String(u.symbol)})</strong>
+                  <small>{u.kind==="base"?"Unidad base":`1 = ${Number(u.unitsPerUnit).toLocaleString("es-MX")} ${String(rows.units.find(b=>b.id===u.baseUnitId)?.name||"unidades")}`} · {u.active===false?"Inactiva":"Activa"}</small>
+                </div>
+                <div className="admin__actions">
+                  <button type="button" disabled={loading} onClick={()=>{setEditingUnit(u.id);setUnitDraft({name:String(u.name),symbol:String(u.symbol),kind:u.kind as UnitDraft["kind"],baseUnitId:String(u.baseUnitId??""),unitsPerUnit:String(u.unitsPerUnit),active:u.active!==false});}}>Editar</button>
+                  <button type="button" disabled={loading} onClick={()=>void save("units",{name:u.name,symbol:u.symbol,kind:u.kind,...(u.baseUnitId?{baseUnitId:u.baseUnitId}:{}),unitsPerUnit:u.unitsPerUnit,active:u.active===false},u.id)}>{u.active===false?"Activar":"Desactivar"}</button>
+                  <button type="button" disabled={loading} onClick={()=>void deleteRecord("units",u.id,String(u.name))}>Eliminar</button>
+                </div>
+              </div>)}</div>
             </section>
           )}
           {tab === "materials" && (
             <section className="admin__section">
-              <h2>Catálogo maestro de insumos</h2><p>Un insumo puede utilizarse en varias líneas; su costo viene de las compras registradas, no del precio de venta.</p>
-              <form className="admin__form" onSubmit={(e:FormEvent) => {e.preventDefault();void save("materials",{name:materialName,baseUnit:unit,lines,active:true});}}>
+              <h2>Catálogo maestro de insumos</h2><p>Una unidad base puede venir del catálogo flexible. El costo se obtiene de compras reales en MXN; no del precio de venta.</p>
+              <form className="admin__form" onSubmit={(e:FormEvent)=>{e.preventDefault();void save("materials",materialPayload(materialName,unit,lines,materialActive),editingMaterial||undefined);}}>
                 <label>Nombre del insumo<input required value={materialName} onChange={e=>setMaterialName(e.target.value)} placeholder="Papel bond de 125 g" maxLength={180}/></label>
-                <label>Unidad base<select value={unit} onChange={e=>setUnit(e.target.value)}><option value="sheet">Hoja</option><option value="piece">Pieza</option><option value="gram">Gramo</option><option value="millilitre">Mililitro</option><option value="centimetre">Centímetro</option></select></label>
-                <fieldset className="admin__fieldset"><legend>Aplicable a</legend>{businessLines.map(l => <label className="admin__check" key={l.id}><input type="checkbox" checked={lines.includes(l.id)} onChange={()=>toggleLine(l.id,lines,setLines)}/>{l.name}</label>)}</fieldset>
-                <button className="admin__button" disabled={loading || !lines.length}>Agregar insumo</button>
+                <label>Unidad base
+                  <select value={unit} onChange={e=>setUnit(e.target.value)} required>
+                    <optgroup label="Unidades anteriores">{Object.entries(legacyUnits).map(([code,name])=><option key={code} value={code}>{name}</option>)}</optgroup>
+                    {unitBases.length>0&&<optgroup label="Catálogo de unidades">{unitBases.map(u=><option key={u.id} value={"catalog:"+u.id}>{String(u.name)} ({String(u.symbol)})</option>)}</optgroup>}
+                  </select>
+                  <small>Para nuevas unidades, primero créalas en la pestaña «Unidades».</small>
+                </label>
+                <fieldset className="admin__fieldset"><legend>Aplicable a</legend>{businessLines.map(l=><label className="admin__check" key={l.id}><input type="checkbox" checked={lines.includes(l.id)} onChange={()=>toggleLine(l.id,lines,setLines)}/>{l.name}</label>)}</fieldset>
+                <label className="admin__check"><input type="checkbox" checked={materialActive} onChange={e=>setMaterialActive(e.target.checked)}/>Activo</label>
+                <div className="admin__actions admin__full">
+                  <button className="admin__button" disabled={loading || !lines.length}>{editingMaterial?"Guardar cambios":"Crear insumo"}</button>
+                  {editingMaterial&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingMaterial(null);setMaterialName("");setUnit("sheet");setMaterialActive(true);}}>Cancelar</button>}
+                </div>
               </form>
               <h3>Insumos registrados</h3>
               <div className="admin__actions">
@@ -233,23 +291,45 @@ export default function AdminPage() {
                 <label>Hasta <input aria-label="Fecha final de costos" type="date" value={costTo} onChange={e=>setCostTo(e.target.value)}/></label>
                 <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setCostFrom("");setCostTo("");}}>Todo el historial</button>
               </div>
-              <div className="admin__records">{rows.materials.map(m => <div className="admin__record" key={m.id}>
-                <div><strong>{String(m.name)}</strong><small>{String(m.baseUnit)} · {Array.isArray(m.lines)?m.lines.join(", "):""}</small></div>
+              <div className="admin__records">{rows.materials.map(m=><div className="admin__record" key={m.id}>
+                <div><strong>{String(m.name)}</strong>
+                  <small>{m.baseUnitId ? String(rows.units.find(u=>u.id===m.baseUnitId)?.name??"Unidad personalizada") : legacyUnits[String(m.baseUnit)]} · {Array.isArray(m.lines)?(m.lines as string[]).join(", "):""} · {m.active===false?"Inactivo":"Activo"}</small>
+                </div>
                 <div><span>Costo ponderado del periodo</span><strong>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
-                <button type="button" disabled={loading} onClick={()=>void save("materials",{name:m.name,baseUnit:m.baseUnit,lines:m.lines,active:!m.active},m.id)}>{m.active?"Desactivar":"Activar"}</button>
+                <div className="admin__actions">
+                  <button type="button" disabled={loading} onClick={()=>{setEditingMaterial(m.id);setMaterialName(String(m.name));setUnit(m.baseUnitId?"catalog:"+m.baseUnitId:String(m.baseUnit||"sheet"));setLines(m.lines as LineId[]);setMaterialActive(m.active!==false);}}>Editar</button>
+                  <button type="button" disabled={loading} onClick={()=>void save("materials",materialPayload(String(m.name),m.baseUnitId?"catalog:"+m.baseUnitId:String(m.baseUnit),m.lines as LineId[],m.active===false),m.id)}>{m.active===false?"Activar":"Desactivar"}</button>
+                  <button type="button" disabled={loading} onClick={()=>void deleteRecord("materials",m.id,String(m.name))}>Eliminar</button>
+                </div>
               </div>)}</div>
             </section>
           )}
           {tab === "presentations" && (
             <section className="admin__section">
-              <h2>Presentaciones de compra</h2><p>Define cuántas unidades contiene un paquete, rollo o caja.</p>
-              <form className="admin__form" onSubmit={(e:FormEvent)=>{e.preventDefault();void save("presentations",{materialId:presentation.materialId,name:presentation.name,unitsPerPackage:Number(presentation.unitsPerPackage)});}}>
-                <label>Insumo<select required value={presentation.materialId} onChange={e=>setPresentation(p=>({...p,materialId:e.target.value}))}><option value="">Seleccionar…</option>{rows.materials.map(m=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select></label>
-                <label>Presentación<input required placeholder="Paquete de 1,000 hojas" value={presentation.name} onChange={e=>setPresentation(p=>({...p,name:e.target.value}))}/></label>
-                <label>Unidades por presentación<input type="number" required min="0.00001" step="any" value={presentation.unitsPerPackage} onChange={e=>setPresentation(p=>({...p,unitsPerPackage:e.target.value}))}/></label>
-                <button disabled={loading} className="admin__button">Guardar presentación</button>
+              <h2>Presentaciones de compra</h2>
+              <p>Relaciona un insumo con una unidad de compra. Por ejemplo: «Paquete de 100», 1 paquete = 100 hojas. Puedes comprar mañana otra presentación sin modificar las compras pasadas.</p>
+              <form className="admin__form" onSubmit={(e:FormEvent)=>{e.preventDefault();void save("presentations",presentationPayload(presentation),editingPresentation||undefined);}}>
+                <label>Insumo<select required value={presentation.materialId} onChange={e=>setPresentation(p=>({...p,materialId:e.target.value,unitId:""}))}><option value="">Seleccionar…</option>{rows.materials.filter(m=>m.active!==false).map(m=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select></label>
+                <label>Nombre de presentación<input required placeholder="Paquete de 100 hojas" value={presentation.name} onChange={e=>setPresentation(p=>({...p,name:e.target.value}))}/></label>
+                <label>Unidad del catálogo (opcional)<select value={presentation.unitId} onChange={e=>setPresentation(p=>({...p,unitId:e.target.value,unitsPerPackage:e.target.value?String(rows.units.find(u=>u.id===e.target.value)?.unitsPerUnit??""):p.unitsPerPackage}))}>
+                  <option value="">Conversión manual</option>{compatibleUnits(presentation.materialId).map(u=><option key={u.id} value={u.id}>{String(u.name)} · {String(u.unitsPerUnit)} unidades base</option>)}
+                </select></label>
+                <label>Equivalencia en unidades base<input type="number" required min="0.000001" step="any" disabled={!!presentation.unitId} value={presentation.unitsPerPackage} onChange={e=>setPresentation(p=>({...p,unitsPerPackage:e.target.value}))}/></label>
+                <label className="admin__check"><input type="checkbox" checked={presentation.active} onChange={e=>setPresentation(p=>({...p,active:e.target.checked}))}/>Activa</label>
+                <div className="admin__actions admin__full">
+                  <button disabled={loading} className="admin__button">{editingPresentation?"Guardar cambios":"Crear presentación"}</button>
+                  {editingPresentation&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingPresentation(null);setPresentation({materialId:"",name:"",unitId:"",unitsPerPackage:"1000",active:true});}}>Cancelar</button>}
+                </div>
               </form>
-              <div className="admin__records">{rows.presentations.map(p=><div className="admin__record" key={p.id}><strong>{String(p.name)}</strong><span>{rows.materials.find(m=>m.id===p.materialId)?.name as string || "Insumo desconocido"}</span><span>{String(p.unitsPerPackage)} unidades</span></div>)}</div>
+              <div className="admin__records">{rows.presentations.map(p=><div className="admin__record" key={p.id}>
+                <div><strong>{String(p.name)}</strong><small>{String(rows.materials.find(m=>m.id===p.materialId)?.name||"Insumo no encontrado")} · {p.active===false?"Inactiva":"Activa"}</small></div>
+                <span>1 = {Number(p.unitsPerPackage).toLocaleString("es-MX")} unidades base</span>
+                <div className="admin__actions">
+                  <button type="button" disabled={loading} onClick={()=>{setEditingPresentation(p.id);setPresentation({materialId:String(p.materialId),name:String(p.name),unitId:String(p.unitId??""),unitsPerPackage:String(p.unitsPerPackage),active:p.active!==false});}}>Editar</button>
+                  <button type="button" disabled={loading} onClick={()=>void save("presentations",presentationPayload({materialId:String(p.materialId),name:String(p.name),unitId:String(p.unitId??""),unitsPerPackage:String(p.unitsPerPackage),active:p.active===false}),p.id)}>{p.active===false?"Activar":"Desactivar"}</button>
+                  <button type="button" disabled={loading} onClick={()=>void deleteRecord("presentations",p.id,String(p.name))}>Eliminar</button>
+                </div>
+              </div>)}</div>
             </section>
           )}
           {tab === "purchases" && (
