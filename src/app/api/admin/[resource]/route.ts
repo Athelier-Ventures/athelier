@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: Params) {
     if (!isResource(resource)) throw new AdminApiError(404, "UNKNOWN_RESOURCE", "Catálogo desconocido");
     const { db } = await adminSession(request);
     const snapshot = await db.collection("admin_" + resource).limit(400).get();
-    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string; createdAt?: string; [field: string]: unknown }));
     items.sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
     return NextResponse.json({ items }, { headers: PRIVATE_HEADERS });
   } catch (error) {
