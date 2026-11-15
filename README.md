@@ -1,6 +1,6 @@
 # Athelier — V0.5 funcional (package.json aún 0.4.1)
 
-**Continuidad y autorizaciones:** lee primero [START_HERE](docs/START_HERE.md), [Fuente de Verdad pública](docs/ESTADO_PROYECTO.md) y [Protocolo de colaboración y publicación](docs/PROTOCOLO_COLABORACION_Y_PUBLICACION.md). El propietario desarrolla mediante rama y Preview; sólo Alain puede autorizar la fusión y publicación, sujeto a controles técnicos verificados. **La protección obligatoria de `main` aún debe configurarse/verificarse en GitHub.**
+**Continuidad y autorizaciones:** lee primero [START_HERE](docs/START_HERE.md), [Fuente de Verdad pública](docs/ESTADO_PROYECTO.md) y [Protocolo de colaboración y publicación](docs/PROTOCOLO_COLABORACION_Y_PUBLICACION.md). El propietario desarrolla mediante rama y Preview; sólo Alain puede autorizar la fusión y publicación, sujeto a controles técnicos verificados. **GitHub confirma `main` sin protección activa (`protected: false`); configurar y verificar reglas obligatorias antes de considerar este control efectivo.**
 
 PWA mobile-first para México (**MXN / es-MX**), con tres líneas de negocio: **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**.
 
