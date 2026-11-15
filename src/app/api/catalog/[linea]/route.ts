@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: Params) {
         title: product.title,
         description: product.description ?? "",
         imageUrl: product.imageUrl ?? "",
-        priceCents: product.basePriceCents,
+        basePriceCents: product.basePriceCents,
         currency: "MXN",
         optionGroups: product.optionGroups ?? [],
         lineIds: product.lineIds ?? [],
