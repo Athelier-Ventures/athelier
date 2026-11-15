@@ -1,39 +1,33 @@
 # Athelier
 
-Versión de bienvenida **V0.2.0** — PWA móvil-first, responsive y bilingüe.
+**V0.3.0 — Experiencia de marcas y base de arquitectura comercial**
 
-## Pantalla principal
+Athelier es una PWA de Next.js, preparada para web y móvil. La bienvenida conserva la imagen frontal aprobada y el lema **«Tu historia hecha presente, única como tú»**.
 
-La portada en español muestra **la imagen frontal de Athelier aprobada**. Está incorporada en `public/athelier-hero.svg` como un SVG autocontenido que incluye el archivo JPEG de alta calidad. **No es una vectorización de la fotografía**: es un contenedor escalable con el recurso original embebido, para garantizar que se despliegue completo en GitHub/Vercel sin archivos adicionales. Diseño adaptado a portrait y landscape mediante `object-fit: contain`.
+## Inicio y navegación
+- En laptop: después de la bienvenida aparecen **tres paneles verticales**, un tercio del viewport cada uno, con fotografías, divisiones y animación sutil de derecha a izquierda.
+- En móvil: tres **bandas horizontales** (Dulce Tentación, Manchas y Trazos, Eco en Tinta) en ese orden.
+- Cada panel dirige a /colecciones/reposteria, /colecciones/personalizaciones o /colecciones/fotografia.
+- La portada mantiene alternancia ES/EN; las páginas de colección son españolas por ahora.
+- Respeta `prefers-reduced-motion` y la navegación accesible con teclado.
 
-- Español de México es el idioma inicial.
-- El selector ES / EN permite alternar al diseño de bienvenida en inglés.
-- El logotipo sin fondo se encuentra en `public/logo-athelier.svg`: trazos vectoriales independientes del fondo, monocromo color cobre, adecuados para redimensionar. Es un trazado desde la fotografía, no el original editable de la marca.
-- Si no se puede cargar la fotografía, la página usa el logotipo vectorial como respaldo.
+## Modelo comercial
+La versión introduce `src/lib/commerce.ts` como primer dominio tipado, con cálculos puros de compras, costos históricos ponderados, materiales y precios configurados. El modelo mantiene **separados** catálogo de insumos, constructor de productos y publicación por línea. Detalles y siguientes etapas en [docs/arquitectura-comercial-v030.md](docs/arquitectura-comercial-v030.md).
 
-## PWA
+**No hay todavía** escrituras de insumos o productos, cuentas habilitadas, permisos administrativos, carrito transaccional, checkout ni pedidos reales. Las páginas de colección son de presentación y no muestran precios ficticios.
 
-Contiene manifest, iconos iniciales, metadatos Apple y service worker con caché de la portada para uso sin conexión después de una visita. **La PWA aún no está publicada como aplicación nativa en App Store o Google Play**.
+## Activos y PWA
+- Portada española: `public/athelier-hero.svg`, contenedor de la imagen original de alta resolución.
+- Logotipo trazado transparente: `public/logo-athelier.svg`.
+- Fotografías de colecciones: referencias editoriales de Unsplash bajo su licencia, no fotos oficiales de producto.
+- Manifest, iconos y service worker con caché de shell; no está empaquetada para App Store ni Google Play.
 
-## Desarrollo local
-
+## Desarrollo
 ```bash
 npm install
+npm run typecheck
+npm run build
 npm run dev
 ```
 
-## Publicación
-
-Vercel conecta automáticamente la rama `main` del repositorio `Athelier-Ventures/athelier`. Next.js genera el build de producción. Firebase se configuró para uso futuro; la V0 no requiere lectura o escritura de datos.
-
-### Próximas fases
-
-Catálogo, configurador de productos, cotizaciones y pagos se diseñarán después de aprobar la portada, sin alterar los módulos actuales (aún no existen).
-
-## Corrección de identidad — V0.2.0
-
-Lema oficial: **«Tu historia hecha presente, única como tú»**. Portada fotográfica en `public/athelier-hero.svg` y trazado de marca con fondo transparente en `public/logo-athelier.svg`. Se añadieron los dos acentos sin alterar la composición y se incrementó la versión de caché de la PWA para entregar la actualización.
-
-## V0.2.0: presentación de líneas de negocio
-
-Después de la portada, tres franjas con entrada animada (respetando las preferencias de movimiento reducido) identifican **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**. Cada franja ocupa aproximadamente un tercio del viewport; todavía no incluye flujos comerciales. El detalle preliminar vive en `docs/alcance-funcional-preliminar.md`.
+Proyecto de Vercel `athelier`, vinculado a la rama `main` del repositorio `Athelier-Ventures/athelier`. No colocar correos de superadministradores, secretos ni datos de prueba en frontend o documentación pública.
