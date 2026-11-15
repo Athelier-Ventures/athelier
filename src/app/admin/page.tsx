@@ -18,6 +18,7 @@ const resources: Resource[] = ["suppliers", "materials", "presentations", "purch
 const tabs: Record<Resource, string> = { suppliers: "Proveedores", materials: "Insumos", presentations: "Presentaciones", purchases: "Compras", products: "Productos" };
 const money = (cents: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 const asCents = (value: string) => Math.round(Number(value) * 100);
+const unitMoney = (cents: number) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:4,maximumFractionDigits:6}).format(cents / 100);
 const newDraft = (): Draft => ({ title: "", description: "", imageUrl: "", basePriceCents: 0, currency: "MXN", lineIds: ["personalizaciones"], status: "draft", optionGroups: [], baseMaterials: [] });
 const isLineId = (x: string): x is LineId => ["reposteria", "personalizaciones", "fotografia"].includes(x);
 
@@ -176,7 +177,7 @@ export default function AdminPage() {
               <h3>Insumos registrados</h3>
               <div className="admin__records">{rows.materials.map(m => <div className="admin__record" key={m.id}>
                 <div><strong>{String(m.name)}</strong><small>{String(m.baseUnit)} · {Array.isArray(m.lines)?m.lines.join(", "):""}</small></div>
-                <div><span>Costo promedio histórico</span><strong>{typeof materialCosts[m.id]==="number" ? money(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
+                <div><span>Costo promedio histórico</span><strong>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
                 <button type="button" disabled={loading} onClick={()=>void save("materials",{name:m.name,baseUnit:m.baseUnit,lines:m.lines,active:!m.active},m.id)}>{m.active?"Desactivar":"Activar"}</button>
               </div>)}</div>
             </section>
@@ -213,7 +214,7 @@ export default function AdminPage() {
               <div className="admin__records">{purchases.map(p=><div className="admin__record" key={p.id}>
                 <div><strong>{rows.materials.find(m=>m.id===p.materialId)?.name as string || "Insumo"}</strong><small>{new Date(p.purchasedAt).toLocaleDateString("es-MX",{timeZone:"UTC"})}</small></div>
                 <div><span>Unidades: {purchaseUnitCount(p).toLocaleString("es-MX")}</span><strong>{money(purchaseTotalCostCents(p,true))} con impuesto</strong></div>
-                <div><span>Sin impuesto por unidad</span><strong>{money(purchaseTotalCostCents(p)/purchaseUnitCount(p))}</strong></div>
+                <div><span>Sin impuesto por unidad</span><strong>{unitMoney(purchaseTotalCostCents(p)/purchaseUnitCount(p))}</strong></div>
               </div>)}</div>
             </section>
           )}
