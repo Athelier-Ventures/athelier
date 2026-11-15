@@ -1,28 +1,37 @@
-# Athelier
+# Athelier — V0.4.0
 
-**V0.3.0 — Experiencia de marcas y base de arquitectura comercial**
+PWA mobile-first para México (**MXN / es-MX**), con tres líneas de negocio: **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**.
 
-Athelier es una PWA de Next.js, preparada para web y móvil. La bienvenida conserva la imagen frontal aprobada y el lema **«Tu historia hecha presente, única como tú»**.
+## Experiencia pública
+- Portada con imagen de marca aprobada.
+- Laptop: tres paneles verticales animados de derecha a izquierda.
+- Celular: tres bandas horizontales.
+- Una colección por negocio: `/colecciones/reposteria`, `/colecciones/personalizaciones`, `/colecciones/fotografia`.
+- Los productos publicados se leen a través de la API pública, sin revelar costos, proveedores ni materiales.
+- Cada producto ofrece sólo las opciones definidas por el propietario, con precio adicional fijo o por unidad.
+- `/carrito`: carrito **único entre las tres marcas**, almacenado localmente. No permite checkout/pago hasta que exista backend de pedidos con revalidación de precios.
 
-## Inicio y navegación
-- En laptop: después de la bienvenida aparecen **tres paneles verticales**, un tercio del viewport cada uno, con fotografías, divisiones y animación sutil de derecha a izquierda.
-- En móvil: tres **bandas horizontales** (Dulce Tentación, Manchas y Trazos, Eco en Tinta) en ese orden.
-- Cada panel dirige a /colecciones/reposteria, /colecciones/personalizaciones o /colecciones/fotografia.
-- La portada mantiene alternancia ES/EN; las páginas de colección son españolas por ahora.
-- Respeta `prefers-reduced-motion` y la navegación accesible con teclado.
+## Administración
+La ruta protegida es **`/admin`**. Autenticación Google + autorización en API del servidor (Firebase Admin SDK, token verificado, email verificado y allowlist privada en Vercel).
 
-## Modelo comercial
-La versión introduce `src/lib/commerce.ts` como primer dominio tipado, con cálculos puros de compras, costos históricos ponderados, materiales y precios configurados. El modelo mantiene **separados** catálogo de insumos, constructor de productos y publicación por línea. Detalles y siguientes etapas en [docs/arquitectura-comercial-v030.md](docs/arquitectura-comercial-v030.md).
+Módulos implementados:
+1. **Proveedores**: alta y activación/desactivación.
+2. **Insumos**: maestro con unidad base y uso en una o varias líneas. Costo unitario ponderado histórico, con rango de fechas.
+3. **Presentaciones**: relación con insumo y unidades por paquete.
+4. **Compras**: proveedor, fecha, presentación, cantidad, costo e impuesto, importes por compra o por paquete; registro histórico **inmutable**.
+5. **Productos**: precio base, borrador/publicado/archivado, publicaciones en varias líneas, variantes obligatorias/opcionales, precio por opción y por unidad, materiales base y edición posterior.
 
-**No hay todavía** escrituras de insumos o productos, cuentas habilitadas, permisos administrativos, carrito transaccional, checkout ni pedidos reales. Las páginas de colección son de presentación y no muestran precios ficticios.
+El modelo de precios usa centavos enteros MXN, independientes del costo del material. La API valida entrada y deja rastro de auditoría de altas y cambios.
 
-## Activos y PWA
-- Portada española: `public/athelier-hero.svg`, contenedor de la imagen original de alta resolución.
-- Logotipo trazado transparente: `public/logo-athelier.svg`.
-- Fotografías de colecciones: referencias editoriales de Unsplash bajo su licencia, no fotos oficiales de producto.
-- Manifest, iconos y service worker con caché de shell; no está empaquetada para App Store ni Google Play.
+## Activación obligatoria (seguridad)
+**Antes de usar datos reales**, seguir `docs/activacion-administracion-v040.md`:
+- Instalar `firestore.rules` (denegar accesos de clientes).
+- Activar Firebase Authentication con Google y el dominio autorizado.
+- Configurar variables públicas Firebase Web y privadas del Admin SDK en Vercel.
+- Definir la lista de 3 superadministradores **exclusivamente como variable privada**.
+- Confirmar reglas mediante `ATHELIER_FIRESTORE_RULES_CONFIRMED=true` **solo después de aplicarlas**.
+- Volver a desplegar después de configurar variables. Sin estas verificaciones la API responde 503 por diseño, no otorga acceso administrativo.
 
-## Desarrollo
 ```bash
 npm install
 npm run typecheck
@@ -30,4 +39,11 @@ npm run build
 npm run dev
 ```
 
-Proyecto de Vercel `athelier`, vinculado a la rama `main` del repositorio `Athelier-Ventures/athelier`. No colocar correos de superadministradores, secretos ni datos de prueba en frontend o documentación pública.
+Variables documentadas en `.env.example`. **Nunca** guardar secretos en GitHub o en imágenes. Firebase Admin SDK debe tener acceso a Firestore y Auth para servir las APIs.
+
+## No implementado todavía
+Checkout, pedidos reales, pasarela de pagos, inventario con salidas/existencias, costos por materiales específicos de cada opción, carga segura de imágenes, reportes contables auditados, seguimiento de fabricación, galerías NFC protegidas y empaquetado nativo Android/iOS.
+
+La PWA web tiene manifest, iconos y service worker. No hay datos comerciales ficticios.
+
+Arquitectura: `docs/arquitectura-comercial-v030.md`. Configuración: `docs/activacion-administracion-v040.md`.
