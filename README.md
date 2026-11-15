@@ -1,4 +1,4 @@
-# Athelier — V0.4.0
+# Athelier — V0.4.1
 
 PWA mobile-first para México (**MXN / es-MX**), con tres líneas de negocio: **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**.
 
@@ -47,3 +47,12 @@ Checkout, pedidos reales, pasarela de pagos, inventario con salidas/existencias,
 La PWA web tiene manifest, iconos y service worker. No hay datos comerciales ficticios.
 
 Arquitectura: `docs/arquitectura-comercial-v030.md`. Configuración: `docs/activacion-administracion-v040.md`.
+
+## V0.4.1 — Unidades configurables y operaciones CRUD
+
+- El catálogo de **unidades** admite unidades base y derivadas con equivalencia: hoja, paquete de 100 hojas, caja de 12 piezas, etc.
+- Los insumos nuevos pueden seleccionar una unidad base creada por el propietario; las presentaciones de compra utilizan una conversión compatible.
+- La API valida la equivalencia y guarda un snapshot de la conversión para cada compra; los costos históricos no cambian al editar presentaciones.
+- Proveedores, unidades, insumos, presentaciones y productos: crear, consultar, editar, activar/desactivar y eliminación segura cuando no existen referencias. Productos publicados deben archivarse antes de retirarlos. Las compras **no se editan ni eliminan**.
+- Todo funciona en MXN, bajo acceso administrativo ya configurado. Sin datos ficticios.
+- Manual completo: [Unidades y CRUD V0.4.1](docs/unidades-y-crud-v041.md).
