@@ -42,7 +42,7 @@ export default function Home() {
           {imageFailed ? (
             <img
               src="/logo-athelier.svg"
-              alt="Athelier. Tu historia hecha presente, unica como tu."
+              alt="Athelier. Tu historia hecha presente, única como tú."
               className="welcome__fallback"
               width={1261}
               height={731}
@@ -50,7 +50,7 @@ export default function Home() {
           ) : (
             <img
               src="/athelier-hero.svg"
-              alt="Athelier. Tu historia hecha presente, unica como tu."
+              alt="Athelier. Tu historia hecha presente, única como tú."
               width={1672}
               height={941}
               decoding="async"
