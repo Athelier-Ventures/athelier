@@ -1,26 +1,31 @@
 # Athelier
 
-**V0.1.0** — PWA mobile-first para iOS, Android, iPad y escritorio, sin comercio todavía.
+Versión de bienvenida **V0.1.2** — PWA móvil-first, responsive y bilingüe.
 
-- Idioma inicial `es-MX`, selector ES/EN.
-- Una sola pantalla de bienvenida, responsive portrait / landscape.
-- Manifest, iconos de instalación, Apple touch icon y service worker con navegación offline básica.
-- No hay Firebase Auth, Firestore, Storage ni pagos activos.
-- Mantener identidad visual y cambios de la app separados de NIXINX.
+## Pantalla principal
 
-## Imagen de la marca (paso pendiente)
+La portada en español muestra **la imagen frontal de Athelier aprobada**. Está incorporada en `public/athelier-hero.svg` como un SVG autocontenido que incluye el archivo JPEG de alta calidad. **No es una vectorización de la fotografía**: es un contenedor escalable con el recurso original embebido, para garantizar que se despliegue completo en GitHub/Vercel sin archivos adicionales. Diseño adaptado a portrait y landscape mediante `object-fit: contain`.
 
-Para mostrar el arte original en alta resolución, guardar el archivo `athelier-hero.webp` en el directorio `public/` y subirlo a la rama `main`. El componente tiene un fallback temporal a las imágenes SVG existentes; no sustituir el arte original por una aproximación sin autorización.
+- Español de México es el idioma inicial.
+- El selector ES / EN permite alternar al diseño de bienvenida en inglés.
+- El logotipo sin fondo se encuentra en `public/logo-athelier.svg`: trazos vectoriales independientes del fondo, monocromo color cobre, adecuados para redimensionar. Es un trazado desde la fotografía, no el original editable de la marca.
+- Si no se puede cargar la fotografía, la página usa el logotipo vectorial como respaldo.
 
-## Desarrollo
+## PWA
+
+Contiene manifest, iconos iniciales, metadatos Apple y service worker con caché de la portada para uso sin conexión después de una visita. **La PWA aún no está publicada como aplicación nativa en App Store o Google Play**.
+
+## Desarrollo local
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Despliegue
+## Publicación
 
-Vercel con proyecto `athelier`, rama `main`, framework `Next.js`, root `./`.
-La PWA requiere HTTPS (proporcionado por Vercel).
-La distribución en App Store y Google Play requiere empaquetado, pruebas y procesos de publicación posteriores; una PWA web no equivale por sí sola a aplicaciones ya publicadas en las tiendas.
+Vercel conecta automáticamente la rama `main` del repositorio `Athelier-Ventures/athelier`. Next.js genera el build de producción. Firebase se configuró para uso futuro; la V0 no requiere lectura o escritura de datos.
+
+### Próximas fases
+
+Catálogo, configurador de productos, cotizaciones y pagos se diseñarán después de aprobar la portada, sin alterar los módulos actuales (aún no existen).
