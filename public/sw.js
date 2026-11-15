@@ -1,5 +1,5 @@
 /* Athelier PWA: only the static public welcome shell is cached. */
-const CACHE = "athelier-shell-v0.1.3";
+const CACHE = "athelier-shell-v0.2.0";
 const SHELL = [
   "/",
   "/manifest.webmanifest",

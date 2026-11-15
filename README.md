@@ -1,6 +1,6 @@
 # Athelier
 
-Versión de bienvenida **V0.1.3** — PWA móvil-first, responsive y bilingüe.
+Versión de bienvenida **V0.2.0** — PWA móvil-first, responsive y bilingüe.
 
 ## Pantalla principal
 
@@ -30,6 +30,10 @@ Vercel conecta automáticamente la rama `main` del repositorio `Athelier-Venture
 
 Catálogo, configurador de productos, cotizaciones y pagos se diseñarán después de aprobar la portada, sin alterar los módulos actuales (aún no existen).
 
-## Corrección de identidad — V0.1.3
+## Corrección de identidad — V0.2.0
 
 Lema oficial: **«Tu historia hecha presente, única como tú»**. Portada fotográfica en `public/athelier-hero.svg` y trazado de marca con fondo transparente en `public/logo-athelier.svg`. Se añadieron los dos acentos sin alterar la composición y se incrementó la versión de caché de la PWA para entregar la actualización.
+
+## V0.2.0: presentación de líneas de negocio
+
+Después de la portada, tres franjas con entrada animada (respetando las preferencias de movimiento reducido) identifican **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**. Cada franja ocupa aproximadamente un tercio del viewport; todavía no incluye flujos comerciales. El detalle preliminar vive en `docs/alcance-funcional-preliminar.md`.
