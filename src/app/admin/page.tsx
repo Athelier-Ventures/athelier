@@ -8,14 +8,17 @@ import { businessLines, type LineId } from "@/lib/brand";
 import { purchaseTotalCostCents, purchaseUnitCount, weightedUnitCost, configuredUnitPriceCents, type Purchase, type CommercialProduct } from "@/lib/commerce";
 import "./admin.css";
 
-type Resource = "suppliers" | "materials" | "presentations" | "purchases" | "products";
+type Resource = "suppliers" | "units" | "materials" | "presentations" | "purchases" | "products";
+type UnitDraft = { name: string; symbol: string; kind: "base" | "derived"; baseUnitId: string; unitsPerUnit: string; active: boolean };
+const emptyUnit = (): UnitDraft => ({name:"",symbol:"",kind:"base",baseUnitId:"",unitsPerUnit:"1",active:true});
+const legacyUnits: Record<string,string> = {sheet:"Hoja",piece:"Pieza",gram:"Gramo",millilitre:"Mililitro",centimetre:"Centímetro"};
 type Entry = { id: string; [key: string]: unknown };
 type Option = { id: string; label: string; priceCents: number; pricingMode: "fixed" | "perUnit" };
 type Group = { id: string; title: string; selection: "single" | "multiple"; required: boolean; options: Option[] };
 type Bill = { materialId: string; unitsConsumed: number };
 type Draft = { title: string; description: string; imageUrl: string; basePriceCents: number; currency: "MXN"; lineIds: LineId[]; status: "draft" | "published" | "archived"; optionGroups: Group[]; baseMaterials: Bill[] };
-const resources: Resource[] = ["suppliers", "materials", "presentations", "purchases", "products"];
-const tabs: Record<Resource, string> = { suppliers: "Proveedores", materials: "Insumos", presentations: "Presentaciones", purchases: "Compras", products: "Productos" };
+const resources: Resource[] = ["suppliers", "units", "materials", "presentations", "purchases", "products"];
+const tabs: Record<Resource, string> = { suppliers: "Proveedores", units: "Unidades", materials: "Insumos", presentations: "Presentaciones", purchases: "Compras", products: "Productos" };
 const money = (cents: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 const asCents = (value: string) => Math.round(Number(value) * 100);
 const unitMoney = (cents: number) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:4,maximumFractionDigits:6}).format(cents / 100);
@@ -30,14 +33,21 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [tab, setTab] = useState<Resource>("materials");
-  const [rows, setRows] = useState<Record<Resource, Entry[]>>({ suppliers: [], materials: [], presentations: [], purchases: [], products: [] });
+  const [rows, setRows] = useState<Record<Resource, Entry[]>>({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
   const [costFrom, setCostFrom] = useState("");
   const [costTo, setCostTo] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [supplierActive, setSupplierActive] = useState(true);
+  const [editingSupplier, setEditingSupplier] = useState<string | null>(null);
+  const [unitDraft, setUnitDraft] = useState<UnitDraft>(emptyUnit);
+  const [editingUnit, setEditingUnit] = useState<string | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<string | null>(null);
+  const [materialActive, setMaterialActive] = useState(true);
+  const [editingPresentation, setEditingPresentation] = useState<string | null>(null);
   const [materialName, setMaterialName] = useState("");
   const [unit, setUnit] = useState("sheet");
   const [lines, setLines] = useState<LineId[]>(["personalizaciones"]);
-  const [presentation, setPresentation] = useState({ materialId: "", name: "", unitsPerPackage: "1000" });
+  const [presentation, setPresentation] = useState({ materialId: "", name: "", unitId: "", unitsPerPackage: "1000", active: true });
   const [purchase, setPurchase] = useState({ presentationId: "", supplierId: "", packages: "1", amount: "", tax: "0", costScope: "wholePurchase" as "wholePurchase" | "perPackage", purchasedAt: new Date().toISOString().slice(0,10) });
   const [product, setProduct] = useState<Draft>(newDraft);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -45,7 +55,7 @@ export default function AdminPage() {
   const [newBillId, setNewBillId] = useState("");
   const [newBillUnits, setNewBillUnits] = useState("1");
 
-  async function request<T>(path: string, method: "GET" | "POST" | "PATCH" = "GET", body?: unknown, currentUser = user): Promise<T> {
+  async function request<T>(path: string, method: "GET" | "POST" | "PATCH" | "DELETE" = "GET", body?: unknown, currentUser = user): Promise<T> {
     if (!currentUser) throw new Error("Primero inicia sesión");
     const token = await currentUser.getIdToken();
     const response = await fetch(path, {
@@ -98,7 +108,7 @@ export default function AdminPage() {
     catch (e) { setError(e instanceof Error ? e.message : "Error al iniciar sesión"); }
   }
   async function logout() {
-    await signOut(browserAuth()); setUser(null); setAuthorized(false); setRows({ suppliers: [], materials: [], presentations: [], purchases: [], products: [] });
+    await signOut(browserAuth()); setUser(null); setAuthorized(false); setRows({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
   }
   async function save(resource: Resource, data: unknown, id?: string) {
     setError(""); setNotice(""); setLoading(true);
@@ -106,14 +116,52 @@ export default function AdminPage() {
       await request("/api/admin/" + resource, id ? "PATCH" : "POST", id ? { id, data } : data);
       await refresh();
       setNotice(id ? "Cambios guardados." : "Registro creado correctamente.");
-      if (resource === "suppliers") setSupplier("");
-      if (resource === "materials") setMaterialName("");
-      if (resource === "presentations") setPresentation({ materialId: "", name: "", unitsPerPackage: "1000" });
+      if (resource === "suppliers") { setSupplier(""); setSupplierActive(true); setEditingSupplier(null); }
+      if (resource === "units") { setUnitDraft(emptyUnit()); setEditingUnit(null); }
+      if (resource === "materials") { setMaterialName(""); setUnit("sheet"); setMaterialActive(true); setEditingMaterial(null); }
+      if (resource === "presentations") { setPresentation({ materialId: "", name: "", unitId: "", unitsPerPackage: "1000", active: true }); setEditingPresentation(null); }
       if (resource === "purchases") setPurchase(p => ({ ...p, amount: "", tax: "0", packages: "1" }));
       if (resource === "products") { setProduct(newDraft()); setEditingProduct(null); }
     } catch(e) { setError(e instanceof Error ? e.message : "Error al guardar"); }
     finally { setLoading(false); }
   }
+  async function deleteRecord(resource: Resource, id: string, name: string) {
+    if (resource === "purchases") return;
+    if (!window.confirm("¿Eliminar definitivamente \"" + name + "\"? Los registros utilizados en compras, productos u otras equivalencias se conservarán.")) return;
+    setLoading(true); setError(""); setNotice("");
+    try {
+      await request("/api/admin/" + resource, "DELETE", { id });
+      await refresh();
+      setNotice("Registro eliminado.");
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo eliminar"); }
+    finally { setLoading(false); }
+  }
+  const unitBases = rows.units.filter(u => u.kind === "base" && u.active !== false);
+  const compatibleUnits = (materialId: string) => {
+    const material = rows.materials.find(m => m.id === materialId);
+    return rows.units.filter(u => u.kind === "derived" && u.active !== false &&
+      Boolean(material?.baseUnitId) && u.baseUnitId === material?.baseUnitId);
+  };
+  const unitPayload = () => ({
+    name: unitDraft.name, symbol: unitDraft.symbol, kind: unitDraft.kind,
+    ...(unitDraft.kind === "derived" ? { baseUnitId: unitDraft.baseUnitId } : {}),
+    unitsPerUnit: unitDraft.kind === "base" ? 1 : Number(unitDraft.unitsPerUnit),
+    active: unitDraft.active,
+  });
+  const presentationPayload = (value: typeof presentation) => ({
+    materialId: value.materialId, name: value.name,
+    ...(value.unitId ? {unitId: value.unitId} : {}),
+    unitsPerPackage: value.unitId ?
+      Number(rows.units.find(u => u.id === value.unitId)?.unitsPerUnit ?? 0) :
+      Number(value.unitsPerPackage),
+    active: value.active,
+  });
+  const materialPayload = (name: string, baseUnitValue: string, lines: LineId[], active: boolean) => ({
+    name, lines, active,
+    ...(baseUnitValue.startsWith("catalog:") ?
+      {baseUnitId: baseUnitValue.slice(8)} :
+      {baseUnit: baseUnitValue}),
+  });
   function toggleLine(id: LineId, current: LineId[], setter: (next: LineId[]) => void) {
     setter(current.includes(id) ? current.filter(v => v !== id) : [...current, id]);
   }
