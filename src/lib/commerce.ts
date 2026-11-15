@@ -1,0 +1,176 @@
+/**
+ * Athelier commerce domain (V0.3.0 foundation).
+ * Pure domain types/calculations only. No seeded business data, auth bypasses,
+ * Firestore writes or customer-facing prices are introduced in this release.
+ * Currency stored as integer minor units (cents) to prevent floating-point drift.
+ */
+import type { LineId } from "./brand";
+
+export type Id = string;
+export type MoneyCents = number;
+export type BaseUnit = "sheet" | "piece" | "gram" | "millilitre" | "centimetre";
+export type PurchaseCostScope = "wholePurchase" | "perPackage";
+
+export interface Supplier {
+  id: Id;
+  name: string;
+  active: boolean;
+}
+
+export interface Material {
+  id: Id;
+  name: string;
+  baseUnit: BaseUnit;
+  lines: LineId[]; // tags, not automatic assignment to a product
+  active: boolean;
+}
+
+export interface MaterialPresentation {
+  id: Id;
+  materialId: Id;
+  name: string; // e.g. ream, box, roll
+  unitsPerPackage: number; // e.g. 1000 sheets per ream
+}
+
+export interface Purchase {
+  id: Id;
+  materialId: Id;
+  presentationId: Id;
+  supplierId: Id;
+  purchasedAt: string; // ISO 8601
+  packages: number;
+  unitsPerPackageSnapshot: number; // immutable historical quantity
+  amountCents: MoneyCents; // before tax
+  taxCents: MoneyCents;
+  costScope: PurchaseCostScope; // whole purchase or each package
+  currency: "CAD";
+}
+
+export type PricingMode = "fixed" | "perUnit";
+export interface ProductOption {
+  id: Id;
+  label: string;
+  priceCents: MoneyCents;
+  pricingMode: PricingMode;
+}
+export interface ProductOptionGroup {
+  id: Id;
+  title: string;
+  selection: "single" | "multiple";
+  required: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  options: ProductOption[];
+}
+export interface BillOfMaterialsLine {
+  materialId: Id;
+  unitsConsumed: number;
+  wastageRate?: number; // 0 to 1
+}
+export interface CommercialProduct {
+  id: Id;
+  title: string;
+  basePriceCents: MoneyCents;
+  currency: "CAD";
+  lineIds: LineId[];
+  status: "draft" | "published" | "archived";
+  optionGroups: ProductOptionGroup[];
+  baseMaterials: BillOfMaterialsLine[];
+}
+export interface ConfiguredChoice { groupId: Id; optionId: Id; units?: number }
+export interface CartLineSnapshot {
+  id: Id;
+  productId: Id;
+  productTitle: string;
+  selections: ConfiguredChoice[];
+  unitPriceCents: MoneyCents;
+  quantity: number;
+  currency: "CAD";
+  // Immutable snapshot: later catalog edits never silently change an order.
+}
+
+function validNonnegative(value: number, field: string): number {
+  if (!Number.isFinite(value) || value < 0) throw new Error(field + " must be nonnegative and finite");
+  return value;
+}
+function validInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(field + " must be a nonnegative safe integer");
+  return value;
+}
+
+export function purchaseUnitCount(purchase: Purchase): number {
+  const packages = validNonnegative(purchase.packages, "packages");
+  const units = validNonnegative(purchase.unitsPerPackageSnapshot, "unitsPerPackageSnapshot");
+  const result = packages * units;
+  if (!Number.isFinite(result) || result <= 0) throw new Error("Purchase must contain positive units");
+  return result;
+}
+export function purchaseTotalCostCents(purchase: Purchase, includeTax = false): number {
+  const factor = purchase.costScope === "perPackage" ? purchase.packages : 1;
+  validNonnegative(factor, "packages");
+  const subtotal = validInteger(purchase.amountCents, "amountCents") * factor;
+  const taxes = includeTax ? validInteger(purchase.taxCents, "taxCents") * factor : 0;
+  const total = subtotal + taxes;
+  if (!Number.isSafeInteger(total)) throw new Error("Cost overflow");
+  return total;
+}
+
+/** Weighted unit cost for a material over a date range. No price overwrites. */
+export function weightedUnitCost(
+  purchases: Purchase[],
+  materialId: Id,
+  range?: { from?: string; to?: string; includeTax?: boolean }
+): number | null {
+  const lots = purchases.filter((p) =>
+    p.materialId === materialId &&
+    (!range?.from || p.purchasedAt >= range.from) &&
+    (!range?.to || p.purchasedAt <= range.to)
+  );
+  if (!lots.length) return null;
+  const units = lots.reduce((sum, p) => sum + purchaseUnitCount(p), 0);
+  const cents = lots.reduce((sum, p) => sum + purchaseTotalCostCents(p, range?.includeTax ?? false), 0);
+  return cents / units;
+}
+
+/** Sales prices are decided by the owner, not derived from material costs. */
+export function configuredUnitPriceCents(product: CommercialProduct, choices: ConfiguredChoice[]): number {
+  let total = validInteger(product.basePriceCents, "basePriceCents");
+  const groups = new Map(product.optionGroups.map((group) => [group.id, group]));
+  const selectionCount = new Map<string, number>();
+  const visited = new Set<string>();
+  for (const choice of choices) {
+    const group = groups.get(choice.groupId);
+    if (!group) throw new Error("Unknown configuration group");
+    const option = group.options.find((item) => item.id === choice.optionId);
+    if (!option) throw new Error("Unknown configuration option");
+    const key = choice.groupId + ":" + choice.optionId;
+    if (visited.has(key)) throw new Error("Duplicate option");
+    visited.add(key);
+    const count = (selectionCount.get(group.id) ?? 0) + 1;
+    selectionCount.set(group.id, count);
+    const units = option.pricingMode === "perUnit" ? validInteger(choice.units ?? 1, "units") : 1;
+    total += validInteger(option.priceCents, "priceCents") * units;
+  }
+  for (const group of product.optionGroups) {
+    const count = selectionCount.get(group.id) ?? 0;
+    const min = Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
+    const max = Math.min(group.selection === "single" ? 1 : Infinity, group.maxSelections ?? Infinity);
+    if (count < min || count > max) throw new Error("Invalid option count: " + group.id);
+  }
+  if (!Number.isSafeInteger(total)) throw new Error("Price overflow");
+  return total;
+}
+export function materialCostEstimateCents(
+  recipe: BillOfMaterialsLine[],
+  unitCosts: Readonly<Record<Id, number>>
+): number | null {
+  let result = 0;
+  for (const part of recipe) {
+    const unitCost = unitCosts[part.materialId];
+    if (unitCost === undefined) return null;
+    const loss = part.wastageRate ?? 0;
+    if (!Number.isFinite(loss) || loss < 0 || loss >= 1) throw new Error("Invalid wastage rate");
+    result += validNonnegative(part.unitsConsumed, "unitsConsumed") / (1 - loss) * validNonnegative(unitCost, "unitCost");
+  }
+  return Math.round(result);
+}
