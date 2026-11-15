@@ -11,6 +11,9 @@ export class AdminApiError extends Error {
 }
 
 function firebaseAdminApp(): App {
+  if (process.env.ATHELIER_FIRESTORE_RULES_CONFIRMED !== "true") {
+    throw new AdminApiError(503, "RULES_NOT_CONFIRMED", "Primero instala reglas Firestore de denegación y confirma su aplicación en Vercel");
+  }
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
