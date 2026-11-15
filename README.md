@@ -1,4 +1,6 @@
-# Athelier — V0.4.1
+# Athelier — V0.5 funcional (package.json aún 0.4.1)
+
+**Continuidad y autorizaciones:** lee primero [START_HERE](docs/START_HERE.md), [Fuente de Verdad pública](docs/ESTADO_PROYECTO.md) y [Protocolo de colaboración y publicación](docs/PROTOCOLO_COLABORACION_Y_PUBLICACION.md). El propietario desarrolla mediante rama y Preview; sólo Alain puede autorizar la fusión y publicación, sujeto a controles técnicos verificados. **La protección obligatoria de `main` aún debe configurarse/verificarse en GitHub.**
 
 PWA mobile-first para México (**MXN / es-MX**), con tres líneas de negocio: **Dulce Tentación**, **Manchas y Trazos** y **Eco en Tinta**.
 
@@ -28,7 +30,7 @@ El modelo de precios usa centavos enteros MXN, independientes del costo del mate
 - Instalar `firestore.rules` (denegar accesos de clientes).
 - Activar Firebase Authentication con Google y el dominio autorizado.
 - Configurar variables públicas Firebase Web y privadas del Admin SDK en Vercel.
-- Definir la lista de 3 superadministradores **exclusivamente como variable privada**.
+- Definir la lista vigente de administradores **exclusivamente como variable privada**, sin publicarla en GitHub.
 - Confirmar reglas mediante `ATHELIER_FIRESTORE_RULES_CONFIRMED=true` **solo después de aplicarlas**.
 - Volver a desplegar después de configurar variables. Sin estas verificaciones la API responde 503 por diseño, no otorga acceso administrativo.
 
