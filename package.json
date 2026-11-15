@@ -1,6 +1,6 @@
 {
   "name": "athelier",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,7 +11,10 @@
   "dependencies": {
     "next": "^16.0.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "firebase": "^12.5.0",
+    "firebase-admin": "^13.5.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
