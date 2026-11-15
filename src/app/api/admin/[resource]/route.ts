@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Firestore } from "firebase-admin/firestore";
 import { adminSession, apiError, AdminApiError, PRIVATE_HEADERS } from "@/lib/admin-server";
 import { isResource, validateInput, type Resource } from "@/lib/admin-schema";
+import { inclusiveTaxBreakdown, type VatTreatment } from "@/lib/iva";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,6 +102,10 @@ async function validateReferences(db: Firestore, resource: Resource, data: Recor
     data.unitsPerPackageSnapshot = presentation.unitsPerPackage;
     data.unitIdSnapshot = presentation.unitId ?? null;
     data.presentationNameSnapshot = presentation.name;
+    // Store an immutable snapshot. The client submits only gross MXN and the tax treatment.
+    const breakdown = inclusiveTaxBreakdown(Number(data.grossCents), data.vatTreatment as VatTreatment);
+    data.amountCents = breakdown.netCents;
+    data.taxCents = breakdown.taxCents;
   }
   if (resource === "products") {
     for (const line of data.baseMaterials as Array<{ materialId: string }>) {

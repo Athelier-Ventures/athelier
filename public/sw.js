@@ -1,7 +1,7 @@
 /* Athelier PWA: public static shell only; no private or purchase data cached. */
-const CACHE = "athelier-shell-v0.4.1";
+const CACHE = "athelier-shell-v0.5.0";
 const SHELL = [
-  "/", "/manifest.webmanifest", "/app-icon.svg", "/athelier-hero.svg",
+  "/", "/manifest.webmanifest", "/app-icon.svg", "/athelier-hero.svg", "/athelier-hero-en.svg",
   "/logo-athelier.svg", "/bienvenida-horizontal.svg", "/bienvenida-vertical.svg",
   "/welcome-horizontal.svg", "/welcome-vertical.svg"
 ];

@@ -32,7 +32,7 @@ export const inputSchemas = {
     presentationId: id, supplierId: id,
     purchasedAt: z.iso.datetime({ offset: true }),
     packages: positive,
-    amountCents: money, taxCents: money,
+    grossCents: money, vatTreatment: z.enum(["standard", "zero", "exempt"]).default("standard"),
     costScope: z.enum(["wholePurchase", "perPackage"]), currency: z.literal("MXN"),
   }).strict(),
   products: z.object({

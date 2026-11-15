@@ -5,7 +5,8 @@ import Link from "next/link";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { browserAuth, googleProvider } from "@/lib/firebase-client";
 import { businessLines, type LineId } from "@/lib/brand";
-import { purchaseTotalCostCents, purchaseUnitCount, weightedUnitCost, configuredUnitPriceCents, type Purchase, type CommercialProduct } from "@/lib/commerce";
+import { purchaseTotalCostCents, purchaseUnitCount, weightedUnitCost, configuredUnitPriceCents, materialCostEstimateCents, type Purchase, type CommercialProduct } from "@/lib/commerce";
+import { inclusiveTaxBreakdown, type VatTreatment } from "@/lib/iva";
 import "./admin.css";
 
 type Resource = "suppliers" | "units" | "materials" | "presentations" | "purchases" | "products";
@@ -48,7 +49,7 @@ export default function AdminPage() {
   const [unit, setUnit] = useState("sheet");
   const [lines, setLines] = useState<LineId[]>(["personalizaciones"]);
   const [presentation, setPresentation] = useState({ materialId: "", name: "", unitId: "", unitsPerPackage: "1000", active: true });
-  const [purchase, setPurchase] = useState({ presentationId: "", supplierId: "", packages: "1", amount: "", tax: "0", costScope: "wholePurchase" as "wholePurchase" | "perPackage", purchasedAt: new Date().toISOString().slice(0,10) });
+  const [purchase, setPurchase] = useState({ presentationId: "", supplierId: "", packages: "1", amount: "", vatTreatment: "standard" as VatTreatment, costScope: "wholePurchase" as "wholePurchase" | "perPackage", purchasedAt: new Date().toISOString().slice(0,10) });
   const [product, setProduct] = useState<Draft>(newDraft);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [newGroupTitle, setNewGroupTitle] = useState("");
@@ -120,7 +121,7 @@ export default function AdminPage() {
       if (resource === "units") { setUnitDraft(emptyUnit()); setEditingUnit(null); }
       if (resource === "materials") { setMaterialName(""); setUnit("sheet"); setMaterialActive(true); setEditingMaterial(null); }
       if (resource === "presentations") { setPresentation({ materialId: "", name: "", unitId: "", unitsPerPackage: "1000", active: true }); setEditingPresentation(null); }
-      if (resource === "purchases") setPurchase(p => ({ ...p, amount: "", tax: "0", packages: "1" }));
+      if (resource === "purchases") setPurchase(p => ({ ...p, amount: "", vatTreatment: "standard", packages: "1" }));
       if (resource === "products") { setProduct(newDraft()); setEditingProduct(null); }
     } catch(e) { setError(e instanceof Error ? e.message : "Error al guardar"); }
     finally { setLoading(false); }
@@ -174,6 +175,15 @@ export default function AdminPage() {
     from: costFrom ? costFrom + "T00:00:00.000Z" : undefined,
     to: costTo ? costTo + "T23:59:59.999Z" : undefined
   })]));
+
+  const materialCostsGross = Object.fromEntries(rows.materials.map(material => [material.id, weightedUnitCost(purchases, material.id, {
+    from: costFrom ? costFrom + "T00:00:00.000Z" : undefined,
+    to: costTo ? costTo + "T23:59:59.999Z" : undefined,
+    includeTax: true,
+  })]));
+  const inclusiveRecipeCost = materialCostEstimateCents(product.baseMaterials, Object.fromEntries(Object.entries(materialCostsGross).filter(([, v])=>v!==null)) as Record<string, number>);
+  const baseRecipeCost = materialCostEstimateCents(product.baseMaterials, Object.fromEntries(Object.entries(materialCosts).filter(([, v])=>v!==null)) as Record<string, number>);
+  const purchaseBreakdown = inclusiveTaxBreakdown(asCents(purchase.amount || "0"), purchase.vatTreatment);
 
   return (
     <main className="admin">
@@ -295,7 +305,7 @@ export default function AdminPage() {
                 <div><strong>{String(m.name)}</strong>
                   <small>{m.baseUnitId ? String(rows.units.find(u=>u.id===m.baseUnitId)?.name??"Unidad personalizada") : legacyUnits[String(m.baseUnit)]} · {Array.isArray(m.lines)?(m.lines as string[]).join(", "):""} · {m.active===false?"Inactivo":"Activo"}</small>
                 </div>
-                <div><span>Costo ponderado del periodo</span><strong>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
+                <div><span>Costo ponderado del periodo</span><strong>{typeof materialCostsGross[m.id]==="number" ? unitMoney(materialCostsGross[m.id]!) + " / unidad IVA incluido" : "Sin compras"}</strong><small>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " sin IVA" : ""}</small></div>
                 <div className="admin__actions">
                   <button type="button" disabled={loading} onClick={()=>{setEditingMaterial(m.id);setMaterialName(String(m.name));setUnit(m.baseUnitId?"catalog:"+m.baseUnitId:String(m.baseUnit||"sheet"));setLines(m.lines as LineId[]);setMaterialActive(m.active!==false);}}>Editar</button>
                   <button type="button" disabled={loading} onClick={()=>void save("materials",materialPayload(String(m.name),m.baseUnitId?"catalog:"+m.baseUnitId:String(m.baseUnit),m.lines as LineId[],m.active===false),m.id)}>{m.active===false?"Activar":"Desactivar"}</button>
@@ -337,14 +347,19 @@ export default function AdminPage() {
               <h2>Compras e historial de costos</h2><p>Cada compra es un registro histórico inmutable. Puedes indicar si el costo capturado es por paquete o por toda la compra.</p>
               <form className="admin__form" onSubmit={(e:FormEvent)=>{e.preventDefault();void save("purchases",{
                 presentationId:purchase.presentationId,supplierId:purchase.supplierId,purchasedAt:new Date(purchase.purchasedAt+"T12:00:00-06:00").toISOString(),
-                packages:Number(purchase.packages),amountCents:asCents(purchase.amount),taxCents:asCents(purchase.tax),costScope:purchase.costScope,currency:"MXN"
+                packages:Number(purchase.packages),grossCents:asCents(purchase.amount),vatTreatment:purchase.vatTreatment,costScope:purchase.costScope,currency:"MXN"
               });}}>
                 <label>Proveedor<select required value={purchase.supplierId} onChange={e=>setPurchase(p=>({...p,supplierId:e.target.value}))}><option value="">Seleccionar…</option>{rows.suppliers.filter(s=>s.active).map(s=><option key={s.id} value={s.id}>{String(s.name)}</option>)}</select></label>
                 <label>Presentación<select required value={purchase.presentationId} onChange={e=>setPurchase(p=>({...p,presentationId:e.target.value}))}><option value="">Seleccionar…</option>{rows.presentations.map(p=><option key={p.id} value={p.id}>{String(p.name)}</option>)}</select></label>
                 <label>Fecha de compra<input type="date" required value={purchase.purchasedAt} onChange={e=>setPurchase(p=>({...p,purchasedAt:e.target.value}))}/></label>
                 <label>Cantidad de paquetes<input type="number" required step="any" min="0.001" value={purchase.packages} onChange={e=>setPurchase(p=>({...p,packages:e.target.value}))}/></label>
-                <label>Costo sin impuesto (MXN)<input type="number" required min="0" step=".01" value={purchase.amount} onChange={e=>setPurchase(p=>({...p,amount:e.target.value}))}/></label>
-                <label>Impuesto (MXN)<input type="number" required min="0" step=".01" value={purchase.tax} onChange={e=>setPurchase(p=>({...p,tax:e.target.value}))}/></label>
+                <label>Importe pagado con IVA incluido (MXN)<input type="number" required min="0" step=".01" value={purchase.amount} onChange={e=>setPurchase(p=>({...p,amount:e.target.value}))}/></label>
+                <label>Tratamiento de IVA<select value={purchase.vatTreatment} onChange={e=>setPurchase(p=>({...p,vatTreatment:e.target.value as VatTreatment}))}>
+                  <option value="standard">IVA general 16% incluido</option>
+                  <option value="zero">Tasa 0%</option>
+                  <option value="exempt">Exento</option>
+                </select></label>
+                <p className="admin__full">Desglose automático (sin añadir impuestos): base {money(purchaseBreakdown.netCents)} + IVA {money(purchaseBreakdown.taxCents)} = <strong>{money(purchaseBreakdown.grossCents)}</strong>. La tasa aplicable depende del artículo y comprobante.</p>
                 <label>Importe capturado<select value={purchase.costScope} onChange={e=>setPurchase(p=>({...p,costScope:e.target.value as "wholePurchase"|"perPackage"}))}><option value="wholePurchase">Total de la compra</option><option value="perPackage">Por cada paquete</option></select></label>
                 <button className="admin__button" disabled={loading}>Registrar compra</button>
               </form>
@@ -352,7 +367,7 @@ export default function AdminPage() {
               <div className="admin__records">{purchases.map(p=><div className="admin__record" key={p.id}>
                 <div><strong>{rows.materials.find(m=>m.id===p.materialId)?.name as string || "Insumo"}</strong><small>{new Date(p.purchasedAt).toLocaleDateString("es-MX",{timeZone:"UTC"})}</small></div>
                 <div><span>Unidades: {purchaseUnitCount(p).toLocaleString("es-MX")}</span><strong>{money(purchaseTotalCostCents(p,true))} con impuesto</strong></div>
-                <div><span>Sin impuesto por unidad</span><strong>{unitMoney(purchaseTotalCostCents(p)/purchaseUnitCount(p))}</strong></div>
+                <div><span>Por unidad: {unitMoney(purchaseTotalCostCents(p,true)/purchaseUnitCount(p))} con IVA · {unitMoney(purchaseTotalCostCents(p)/purchaseUnitCount(p))} sin IVA</span><strong>IVA incluido {money(p.taxCents * (p.costScope==="perPackage" ? p.packages : 1))}</strong></div>
               </div>)}</div>
             </section>
           )}
@@ -364,7 +379,7 @@ export default function AdminPage() {
                 <label>Nombre del producto<input required maxLength={180} value={product.title} onChange={e=>setProduct(p=>({...p,title:e.target.value}))} placeholder="Ej. Libreta personalizada"/></label>
                 <label>Descripción<textarea maxLength={1500} rows={3} value={product.description} onChange={e=>setProduct(p=>({...p,description:e.target.value}))}/></label>
                 <label>URL pública de imagen (opcional)<input type="url" placeholder="https://..." value={product.imageUrl} onChange={e=>setProduct(p=>({...p,imageUrl:e.target.value}))}/></label>
-                <label>Precio base de venta (MXN)<input type="number" min="0" step=".01" required value={(product.basePriceCents/100).toString()} onChange={e=>setProduct(p=>({...p,basePriceCents:asCents(e.target.value)}))}/></label>
+                <label>Precio base de venta (MXN, IVA incluido cuando aplique)<input type="number" min="0" step=".01" required value={(product.basePriceCents/100).toString()} onChange={e=>setProduct(p=>({...p,basePriceCents:asCents(e.target.value)}))}/></label>
                 <fieldset className="admin__fieldset"><legend>Publicar en</legend>{businessLines.map(l=><label className="admin__check" key={l.id}><input type="checkbox" checked={product.lineIds.includes(l.id)} onChange={()=>toggleLine(l.id,product.lineIds,next=>setProduct(p=>({...p,lineIds:next})))}/>{l.name}</label>)}</fieldset>
                 <label>Estado<select value={product.status} onChange={e=>setProduct(p=>({...p,status:e.target.value as Draft["status"]}))}><option value="draft">Borrador (no visible)</option><option value="published">Publicado</option><option value="archived">Archivado</option></select></label>
                 <div className="admin__full">
@@ -391,7 +406,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="admin__full">
-                  <h3>Materiales base de fabricación</h3><p>Consumo por unidad de producto. Es independiente de cuánto cobras.</p>
+                  <h3>Materiales base de fabricación</h3><p>Consumo por unidad de producto. Costeo a partir de compras reales, con y sin IVA, independiente del precio de venta.</p>
                   {product.baseMaterials.map((b,i)=><div key={i} className="admin__record"><span>{String(rows.materials.find(m=>m.id===b.materialId)?.name ?? b.materialId)} · {b.unitsConsumed} unidades</span><button type="button" className="admin__button admin__button--ghost" onClick={()=>setProduct(p=>({...p,baseMaterials:p.baseMaterials.filter((_,j)=>j!==i)}))}>Quitar</button></div>)}
                   <div className="admin__actions">
                     <select aria-label="Insumo asociado" value={newBillId} onChange={e=>setNewBillId(e.target.value)}><option value="">Seleccionar insumo…</option>{rows.materials.map(m=><option key={m.id} value={m.id}>{String(m.name)}</option>)}</select>
@@ -399,6 +414,7 @@ export default function AdminPage() {
                     <button type="button" className="admin__button admin__button--ghost" disabled={!newBillId || !(Number(newBillUnits)>0)} onClick={()=>setProduct(p=>({...p,baseMaterials:[...p.baseMaterials,{materialId:newBillId,unitsConsumed:Number(newBillUnits)}]}))}>+ Asociar material</button>
                   </div>
                 </div>
+                <div className="admin__full"><strong>Costo estimado de materiales por producto: {inclusiveRecipeCost === null ? "Faltan costos de compra" : money(inclusiveRecipeCost)} IVA incluido</strong><p>Base sin IVA: {baseRecipeCost === null ? "Sin datos completos" : money(baseRecipeCost)} · Precio de venta: {money(product.basePriceCents)} (IVA incluido cuando aplique). No se suma IVA al precio de venta y el costo no lo modifica automáticamente.</p></div>
                 <div className="admin__actions admin__full"><button className="admin__button" disabled={loading || !product.lineIds.length}>{editingProduct?"Guardar cambios":"Crear producto"}</button>{editingProduct&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingProduct(null);setProduct(newDraft());}}>Cancelar edición</button>}</div>
               </form>
               <h3>Productos registrados</h3>
