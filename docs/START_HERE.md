@@ -24,7 +24,7 @@
 
 - **Código productivo:** `main` = `78c07de779609a19287c3885b628d61ef247900c`; Vercel Productivo READY en `dpl_2mRJskUFeUzaaB6PkQxw3x5gw7mq`.
 - **P0 sin resolver:** SVG de bienvenida inglés mantiene lema español debajo de degradado y texto inglés.
-- **Controles GitHub:** Rulesets devolvió `[]`; branch protection específico no legible (403). **No afirmar que `main` está técnicamente protegida**.
+- **Controles GitHub:** Rulesets devolvió `[]`; la API de rama indica **`main` = `protected: false`**. El detalle de branch protection devuelve 403, pero el estado general evidencia que **NO hay protección habilitada**. Configurar y verificar antes de considerarla efectiva.
 - **Variables y reglas Firebase:** listas privadas Vercel y despliegue real de reglas Firestore aún no comprobados.
 - **Sin checkout/pagos:** carrito local no constituye orden.
 - **Este paquete documental:** propuesto en una rama para PR; no considerar política publicada en `main` hasta su aprobación/merge por Alain.
