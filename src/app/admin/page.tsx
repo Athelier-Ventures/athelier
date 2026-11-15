@@ -406,6 +406,8 @@ export default function AdminPage() {
                 <div><strong>{String(item.title)}</strong><small>{String(item.status)} · {(item.lineIds as string[]).join(", ")}</small></div>
                 <strong>{money(Number(item.basePriceCents))}</strong>
                 <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
+                {item.status==="draft" ? <button type="button" className="admin__button admin__button--ghost" disabled={loading} onClick={()=>void deleteRecord("products",item.id,String(item.title))}>Eliminar borrador</button> :
+                 <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
               </div>)}</div>
             </section>
           )}
