@@ -7,61 +7,57 @@ type Language = "es" | "en";
 export default function Home() {
   const [language, setLanguage] = useState<Language>("es");
   const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    document.documentElement.lang = language === "es" ? "es-MX" : "en";
-  }, [language]);
-
   const english = language === "en";
 
+  useEffect(() => {
+    document.documentElement.lang = english ? "en" : "es-MX";
+  }, [english]);
+
   return (
-    <main
-      className="welcome"
-      aria-label={english ? "Welcome to Athelier" : "Bienvenidos a Athelier"}
-    >
-      <nav
-        className="language-switch"
-        aria-label={english ? "Choose language" : "Seleccionar idioma"}
-      >
+    <main className="welcome" aria-label={english ? "Welcome to Athelier" : "Bienvenidos a Athelier"}>
+      <nav className="language-switch" aria-label={english ? "Choose language" : "Seleccionar idioma"}>
         <button
           type="button"
-          className={language === "es" ? "language-switch__option is-active" : "language-switch__option"}
+          className={english ? "language-switch__option" : "language-switch__option is-active"}
           onClick={() => setLanguage("es")}
-          aria-pressed={language === "es"}
+          aria-pressed={!english}
           lang="es"
         >ES</button>
         <button
           type="button"
-          className={language === "en" ? "language-switch__option is-active" : "language-switch__option"}
+          className={english ? "language-switch__option is-active" : "language-switch__option"}
           onClick={() => setLanguage("en")}
-          aria-pressed={language === "en"}
+          aria-pressed={english}
           lang="en"
         >EN</button>
       </nav>
-      {imageFailed ? (
+
+      {english ? (
         <picture className="welcome__art">
-          <source
-            media="(orientation: portrait)"
-            srcSet={english ? "/welcome-vertical.svg" : "/bienvenida-vertical.svg"}
-          />
-          <img
-            src={english ? "/welcome-horizontal.svg" : "/bienvenida-horizontal.svg"}
-            alt={english ? "Athelier. Welcome." : "Athelier. Bienvenidos."}
-            width={1600}
-            height={900}
-          />
+          <source media="(orientation: portrait)" type="image/svg+xml" srcSet="/welcome-vertical.svg" />
+          <img src="/welcome-horizontal.svg" alt="Athelier. Welcome." width={1600} height={900} decoding="async" />
         </picture>
       ) : (
         <div className="welcome__art welcome__art--brand">
-          <img
-            src="/athelier-hero.webp"
-            alt="Athelier. Tu historia hecha presente, unica como tu."
-            width={1672}
-            height={941}
-            decoding="async"
-            fetchPriority="high"
-            onError={() => setImageFailed(true)}
-          />
+          {imageFailed ? (
+            <img
+              src="/logo-athelier.svg"
+              alt="Athelier. Tu historia hecha presente, unica como tu."
+              className="welcome__fallback"
+              width={1261}
+              height={731}
+            />
+          ) : (
+            <img
+              src="/athelier-hero.svg"
+              alt="Athelier. Tu historia hecha presente, unica como tu."
+              width={1672}
+              height={941}
+              decoding="async"
+              fetchPriority="high"
+              onError={() => setImageFailed(true)}
+            />
+          )}
         </div>
       )}
     </main>
