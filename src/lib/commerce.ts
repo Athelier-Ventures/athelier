@@ -56,7 +56,9 @@ export interface Purchase {
   unitsPerPackageSnapshot: number; // immutable historical quantity
   unitIdSnapshot?: Id | null;
   presentationNameSnapshot?: string;
-  amountCents: MoneyCents; // before tax
+  grossCents?: MoneyCents; // gross price actually paid, populated on new purchases
+  vatTreatment?: "standard" | "zero" | "exempt"; // recorded tax treatment on new purchases
+  amountCents: MoneyCents; // net of tax; historical records retain original value
   taxCents: MoneyCents;
   costScope: PurchaseCostScope; // whole purchase or each package
   currency: "MXN";
