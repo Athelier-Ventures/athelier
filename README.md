@@ -1,13 +1,18 @@
 # Athelier
 
-**Versión 0.0.2** — pantalla de bienvenida, preparada para deploy en Vercel.
+**V0.1.0** — PWA mobile-first para iOS, Android, iPad y escritorio, sin comercio todavía.
 
-- **Español por defecto (es-MX)**, con selector accesible ES / EN. El idioma inglés se puede activar en la esquina superior derecha; recargar restablece español como idioma predeterminado.
-- **Mobile-first**: una sola pantalla con ilustración responsive para móviles, tablets y laptops, tanto en orientación vertical como horizontal.
-- Sin catálogo, formularios, cuentas, pagos, base de datos ni solicitudes de datos. Firebase no está conectado todavía.
-- Los gráficos de bienvenida son recursos SVG locales provisionales; no requieren secretos ni servicios externos.
+- Idioma inicial `es-MX`, selector ES/EN.
+- Una sola pantalla de bienvenida, responsive portrait / landscape.
+- Manifest, iconos de instalación, Apple touch icon y service worker con navegación offline básica.
+- No hay Firebase Auth, Firestore, Storage ni pagos activos.
+- Mantener identidad visual y cambios de la app separados de NIXINX.
 
-## Desarrollo local
+## Imagen de la marca (paso pendiente)
+
+Para mostrar el arte original en alta resolución, guardar el archivo `athelier-hero.webp` en el directorio `public/` y subirlo a la rama `main`. El componente tiene un fallback temporal a las imágenes SVG existentes; no sustituir el arte original por una aproximación sin autorización.
+
+## Desarrollo
 
 ```bash
 npm install
@@ -16,8 +21,6 @@ npm run dev
 
 ## Despliegue
 
-En Vercel, importa [Athelier-Ventures/athelier](https://github.com/Athelier-Ventures/athelier), selecciona **Next.js**, Root Directory `./` y Production Branch `main`. No se necesitan variables de Firebase para V0; aunque las hayas configurado, la pantalla no las usa.
-
-## Alcance
-
-La identidad visual es provisional y puede sustituirse sin alterar la estructura. El comercio y la persistencia se diseñarán a partir de una V1 futura.
+Vercel con proyecto `athelier`, rama `main`, framework `Next.js`, root `./`.
+La PWA requiere HTTPS (proporcionado por Vercel).
+La distribución en App Store y Google Play requiere empaquetado, pruebas y procesos de publicación posteriores; una PWA web no equivale por sí sola a aplicaciones ya publicadas en las tiendas.

@@ -1,39 +1,27 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-body { background: #f9e7d2; }
-.welcome { width: 100%; min-height: 100vh; min-height: 100dvh; overflow: hidden; position: relative; }
+body { background: #edbfc0; }
+.welcome { position: relative; width: 100%; min-height: 100vh; min-height: 100dvh; overflow: hidden; background: #edbfc0; }
 .welcome__art { display: block; width: 100%; height: 100vh; height: 100dvh; }
 .welcome__art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.welcome__art--brand { background: #edbfc0; }
+.welcome__art--brand img { object-fit: contain; }
 .language-switch {
-  position: fixed;
-  z-index: 10;
+  position: fixed; z-index: 10;
   top: calc(12px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
-  display: flex;
-  padding: 4px;
-  gap: 2px;
-  border: 1px solid rgba(91, 55, 30, 0.2);
-  border-radius: 999px;
-  background: rgba(255, 248, 235, 0.95);
-  box-shadow: 0 4px 24px rgba(66, 36, 21, 0.12);
+  display: flex; padding: 4px; gap: 2px;
+  border: 1px solid rgba(91, 55, 30, .2); border-radius: 999px;
+  background: rgba(255, 248, 235, .95); box-shadow: 0 4px 24px rgba(66,36,21,.12);
 }
 .language-switch__option {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: #4d2715;
-  font: 600 14px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
-  cursor: pointer;
-  touch-action: manipulation;
+  min-width: 44px; min-height: 44px; padding: 0 12px;
+  border: none; border-radius: 999px; background: transparent; color: #4d2715;
+  font: 600 14px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  cursor: pointer; touch-action: manipulation;
 }
 .language-switch__option.is-active { background: #4d2715; color: #fff; }
 .language-switch__option:focus-visible { outline: 3px solid #ae653e; outline-offset: 3px; }
-@media (max-width: 520px) {
-  .language-switch {
-    top: calc(8px + env(safe-area-inset-top, 0px));
-    right: calc(8px + env(safe-area-inset-right, 0px));
-  }
+@media (max-width:520px) {
+  .language-switch { top: calc(8px + env(safe-area-inset-top,0px)); right: calc(8px + env(safe-area-inset-right,0px)); }
 }
