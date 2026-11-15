@@ -31,6 +31,8 @@ export default function AdminPage() {
   const [notice, setNotice] = useState("");
   const [tab, setTab] = useState<Resource>("materials");
   const [rows, setRows] = useState<Record<Resource, Entry[]>>({ suppliers: [], materials: [], presentations: [], purchases: [], products: [] });
+  const [costFrom, setCostFrom] = useState("");
+  const [costTo, setCostTo] = useState("");
   const [supplier, setSupplier] = useState("");
   const [materialName, setMaterialName] = useState("");
   const [unit, setUnit] = useState("sheet");
@@ -120,7 +122,10 @@ export default function AdminPage() {
   }
 
   const purchases = rows.purchases as unknown as Purchase[];
-  const materialCosts = Object.fromEntries(rows.materials.map(material => [material.id, weightedUnitCost(purchases, material.id)]));
+  const materialCosts = Object.fromEntries(rows.materials.map(material => [material.id, weightedUnitCost(purchases, material.id, {
+    from: costFrom ? costFrom + "T00:00:00.000Z" : undefined,
+    to: costTo ? costTo + "T23:59:59.999Z" : undefined
+  })]));
 
   return (
     <main className="admin">
@@ -175,9 +180,14 @@ export default function AdminPage() {
                 <button className="admin__button" disabled={loading || !lines.length}>Agregar insumo</button>
               </form>
               <h3>Insumos registrados</h3>
+              <div className="admin__actions">
+                <label>Costos desde <input aria-label="Fecha inicial de costos" type="date" value={costFrom} onChange={e=>setCostFrom(e.target.value)}/></label>
+                <label>Hasta <input aria-label="Fecha final de costos" type="date" value={costTo} onChange={e=>setCostTo(e.target.value)}/></label>
+                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setCostFrom("");setCostTo("");}}>Todo el historial</button>
+              </div>
               <div className="admin__records">{rows.materials.map(m => <div className="admin__record" key={m.id}>
                 <div><strong>{String(m.name)}</strong><small>{String(m.baseUnit)} · {Array.isArray(m.lines)?m.lines.join(", "):""}</small></div>
-                <div><span>Costo promedio histórico</span><strong>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
+                <div><span>Costo ponderado del periodo</span><strong>{typeof materialCosts[m.id]==="number" ? unitMoney(materialCosts[m.id]!) + " / unidad" : "Sin compras"}</strong></div>
                 <button type="button" disabled={loading} onClick={()=>void save("materials",{name:m.name,baseUnit:m.baseUnit,lines:m.lines,active:!m.active},m.id)}>{m.active?"Desactivar":"Activar"}</button>
               </div>)}</div>
             </section>
