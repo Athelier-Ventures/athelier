@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1261" height="729" viewBox="0 0 1261 729" role="img" aria-labelledby="logo-title logo-desc">
 <title id="logo-title">ATHELIER</title>
-<desc id="logo-desc">Monograma floral Athelier. Tu historia hecha presente, unica como tu. Vector sin fondo.</desc>
+<desc id="logo-desc">Monograma floral Athelier. Tu historia hecha presente, única como tú. Vector sin fondo.</desc>
 <defs><linearGradient id="roseGold" x1="0%" y1="0%" x2="16%" y2="100%">
   <stop offset="0%" stop-color="#bd6f50"/><stop offset="22%" stop-color="#c17c55"/>
   <stop offset="47%" stop-color="#a75336"/><stop offset="66%" stop-color="#d79e72"/>
@@ -82,4 +82,5 @@
 <path d="M 565 179 L 567 181 L 565 183 L 563 181 Z"/>
 <path d="M 581 164 L 583 166 L 581 168 L 579 166 Z"/>
 <path d="M 582 160 L 584 162 L 582 164 L 580 162 Z"/></g>
+<g id="acentos-del-eslogan" transform="translate(-207 -88)" stroke="#a75a3c" stroke-width="3.25" stroke-linecap="round" fill="none"><path d="M 1031.8 686.5 C 1034.6 680.4 1041.9 672.5 1046.6 669.8"/><path d="M 1393.3 665.7 C 1397 659.1 1402.3 651.6 1406.4 648.8"/></g>
 </svg>
