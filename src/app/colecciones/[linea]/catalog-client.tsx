@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import "./catalog.css";
 import { addConfiguredProduct, type PublicProduct } from "@/lib/cart-client";
 import { configuredUnitPriceCents, type ConfiguredChoice, type CommercialProduct } from "@/lib/commerce";
 
