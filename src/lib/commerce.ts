@@ -1,5 +1,5 @@
 /**
- * Athelier commerce domain (V0.4.0 Mexico).
+ * Athelier commerce domain (V0.4.1 Mexico).
  * Pure domain types/calculations only. No seeded business data, auth bypasses,
  * Firestore writes or customer-facing prices are introduced in this release.
  * Currency stored as integer minor units (cents) to prevent floating-point drift.
@@ -9,6 +9,17 @@ import type { LineId } from "./brand";
 export type Id = string;
 export type MoneyCents = number;
 export type BaseUnit = "sheet" | "piece" | "gram" | "millilitre" | "centimetre";
+
+/** User-defined base unit or a derived purchasing unit, e.g. 1 pack = 100 sheets. */
+export interface CatalogUnit {
+  id: Id;
+  name: string;
+  symbol: string;
+  kind: "base" | "derived";
+  baseUnitId?: Id;
+  unitsPerUnit: number;
+  active: boolean;
+}
 export type PurchaseCostScope = "wholePurchase" | "perPackage";
 
 export interface Supplier {
@@ -20,7 +31,8 @@ export interface Supplier {
 export interface Material {
   id: Id;
   name: string;
-  baseUnit: BaseUnit;
+  baseUnit?: BaseUnit; // Legacy units prior to configurable catalog
+  baseUnitId?: Id; // Preferred: references CatalogUnit where kind === "base"
   lines: LineId[]; // tags, not automatic assignment to a product
   active: boolean;
 }
@@ -30,6 +42,8 @@ export interface MaterialPresentation {
   materialId: Id;
   name: string; // e.g. ream, box, roll
   unitsPerPackage: number; // e.g. 1000 sheets per ream
+  unitId?: Id; // Optional reference to a user-defined derived CatalogUnit
+  active?: boolean;
 }
 
 export interface Purchase {
@@ -40,6 +54,8 @@ export interface Purchase {
   purchasedAt: string; // ISO 8601
   packages: number;
   unitsPerPackageSnapshot: number; // immutable historical quantity
+  unitIdSnapshot?: Id | null;
+  presentationNameSnapshot?: string;
   amountCents: MoneyCents; // before tax
   taxCents: MoneyCents;
   costScope: PurchaseCostScope; // whole purchase or each package
