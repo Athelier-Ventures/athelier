@@ -6,6 +6,7 @@
 
 1. [Estado técnico, comercial y funcional comprobado](ESTADO_PROYECTO.md) — Fuente de Verdad pública, corte inicial 2026-11-15. Actualizarla con los PR que cambien el sistema.
 2. [Protocolo de colaboración y autorización de producción](PROTOCOLO_COLABORACION_Y_PUBLICACION.md) — regla obligatoria: **propietario desarrolla/prueba/aprueba funcionalmente; Alain autoriza producción**.
+   - [Activación administrativa pendiente: proteger `main` y Vercel](ACTIVACION_PROTECCION_MAIN.md).
 3. **Prompt Maestro íntegro**: archivo `ATHELIER_PROMPT_MAESTRO_CONTINUIDAD_2026-11-15.md` incluido en el proyecto compartido de ChatGPT **Athelier**; leerlo entero si está disponible. El archivo contiene datos de identidad administrativa que no deben publicarse en un repositorio público. [ESTADO_PROYECTO.md](ESTADO_PROYECTO.md) contiene la parte funcional pública necesaria para continuidad sin secretos.
 4. Documentación histórica del repositorio: `README.md`, `docs/alcance-funcional-preliminar.md`, `docs/arquitectura-comercial-v030.md`, `docs/activacion-administracion-v040.md` y `docs/unidades-y-crud-v041.md`.
 
