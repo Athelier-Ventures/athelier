@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import "./cart.css";
 import { useEffect, useState } from "react";
 import { loadCart, saveCart, type CartItem } from "@/lib/cart-client";
 
