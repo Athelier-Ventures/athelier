@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   applicationName: "Athelier",
   title: "Athelier | Tu historia hecha presente",
-  description: "Tu historia hecha presente, unica como tu.",
+  description: "Tu historia hecha presente, única como tú.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
