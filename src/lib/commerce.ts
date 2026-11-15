@@ -1,5 +1,5 @@
 /**
- * Athelier commerce domain (V0.3.0 foundation).
+ * Athelier commerce domain (V0.4.0 Mexico).
  * Pure domain types/calculations only. No seeded business data, auth bypasses,
  * Firestore writes or customer-facing prices are introduced in this release.
  * Currency stored as integer minor units (cents) to prevent floating-point drift.
@@ -43,7 +43,7 @@ export interface Purchase {
   amountCents: MoneyCents; // before tax
   taxCents: MoneyCents;
   costScope: PurchaseCostScope; // whole purchase or each package
-  currency: "CAD";
+  currency: "MXN";
 }
 
 export type PricingMode = "fixed" | "perUnit";
@@ -71,7 +71,7 @@ export interface CommercialProduct {
   id: Id;
   title: string;
   basePriceCents: MoneyCents;
-  currency: "CAD";
+  currency: "MXN";
   lineIds: LineId[];
   status: "draft" | "published" | "archived";
   optionGroups: ProductOptionGroup[];
@@ -85,7 +85,7 @@ export interface CartLineSnapshot {
   selections: ConfiguredChoice[];
   unitPriceCents: MoneyCents;
   quantity: number;
-  currency: "CAD";
+  currency: "MXN";
   // Immutable snapshot: later catalog edits never silently change an order.
 }
 
