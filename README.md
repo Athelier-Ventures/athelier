@@ -1,27 +1,23 @@
 # Athelier
 
-Versión **0.0.1**: pantalla de bienvenida responsive (mobile-first).
+**Versión 0.0.2** — pantalla de bienvenida, preparada para deploy en Vercel.
 
-- Compatible con celulares, tablets y laptops, en portrait y landscape.
-- Sólo imágenes SVG locales: sin catálogo, formularios, Firebase, pagos, scripts de terceros ni datos de prueba.
-- No contiene secretos ni credenciales.
+- **Español por defecto (es-MX)**, con selector accesible ES / EN. El idioma inglés se puede activar en la esquina superior derecha; recargar restablece español como idioma predeterminado.
+- **Mobile-first**: una sola pantalla con ilustración responsive para móviles, tablets y laptops, tanto en orientación vertical como horizontal.
+- Sin catálogo, formularios, cuentas, pagos, base de datos ni solicitudes de datos. Firebase no está conectado todavía.
+- Los gráficos de bienvenida son recursos SVG locales provisionales; no requieren secretos ni servicios externos.
 
-## Desarrollo
+## Desarrollo local
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Producción
+## Despliegue
 
-```bash
-npm run build
-npm run start
-```
-
-Para desplegar en Vercel: importar `Athelier-Ventures/athelier`, seleccionar **Next.js**, raíz `./` y rama `main`. La aplicación aún no utiliza las variables públicas de Firebase ya cargadas en Vercel. No se requieren otras variables para V0.
+En Vercel, importa [Athelier-Ventures/athelier](https://github.com/Athelier-Ventures/athelier), selecciona **Next.js**, Root Directory `./` y Production Branch `main`. No se necesitan variables de Firebase para V0; aunque las hayas configurado, la pantalla no las usa.
 
 ## Alcance
 
-La imagen es provisional hasta que el cliente apruebe la identidad de marca. Las características comerciales se definirán en versiones posteriores.
+La identidad visual es provisional y puede sustituirse sin alterar la estructura. El comercio y la persistencia se diseñarán a partir de una V1 futura.
