@@ -97,6 +97,8 @@ export default function Home() {
         </div>
         <div className="business-lines__footer">
           <span>ATHELIER</span>
+          <Link href="/carrito">Carrito</Link>
+          <Link href="/admin">Administración</Link>
           <a href="#inicio">{english ? "Back to start ↑" : "Volver al inicio ↑"}</a>
         </div>
       </section>

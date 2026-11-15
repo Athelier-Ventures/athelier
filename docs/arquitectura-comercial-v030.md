@@ -23,7 +23,7 @@ Entidades previstas en src/lib/commerce.ts:
 - Compra inmutable: proveedor, fecha, cantidad de paquetes, unidades por paquete históricas, costo base, impuesto separado, moneda y ámbito del importe (total de compra o por paquete).
 - Cálculo de total de unidades y costo ponderado por unidad en un período.
 - Impuestos: se guardan separados; el cálculo podrá incluirlos según el tratamiento contable definido.
-- Ejemplo: 5 paquetes × 1,000 hojas = 5,000 hojas. Si **100 CAD es el total de la compra**, antes de impuestos = 0.02 CAD/hoja. Si el importe es **por paquete**, el costo es 0.10 CAD/hoja. La captura deberá obligar a elegir ámbito.
+- Ejemplo: 5 paquetes × 1,000 hojas = 5,000 hojas. Si **100 MXN es el total de la compra**, antes de impuestos = 0.02 MXN/hoja. Si el importe es **por paquete**, el costo es 0.10 MXN/hoja. La captura deberá obligar a elegir ámbito.
 
 La clasificación de un insumo para una o más líneas **no** lo incorpora a todos los productos de esas líneas. La lista de materiales (BOM) vincula expresamente consumos y desperdicios por producto.
 
@@ -34,7 +34,7 @@ La clasificación de un insumo para una o más líneas **no** lo incorpora a tod
 - Precio al cliente = precio base + incrementos de las opciones, definidos **por el propietario**, no automáticamente por costo.
 - Consumo teórico de materiales + precio histórico de compra = estimación interna de costo.
 - Pedido futuro: una línea de carrito por artículo configurado, con snapshot de opciones, cantidades y precio para conservar lo contratado aunque el catálogo cambie.
-- Ejemplo: libreta 20 CAD + calendario 4 + pasta dura 5 + dedicatoria 2 = 31 CAD. En el pedido es **una** libreta con tres opciones, no cuatro productos.
+- Ejemplo: libreta 20 MXN + calendario 4 + pasta dura 5 + dedicatoria 2 = 31 MXN. En el pedido es **una** libreta con tres opciones, no cuatro productos.
 
 ## 3. Publicación por línea
 - Repostería / Dulce Tentación: productos con alternativas limitadas por el propietario, como caja/bolsa, nuez, arándanos o chocolate; no personalización libre de recetas.

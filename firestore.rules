@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Every browser / mobile client is denied by default.
+    // Athelier Admin CRUD is exclusively through authenticated Next.js server API
+    // using Firebase Admin SDK, which bypasses Security Rules.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
