@@ -10,12 +10,23 @@ export const inputSchemas = {
   suppliers: z.object({
     name: required, active: z.boolean().default(true),
   }).strict(),
+  units: z.object({
+    name: required, symbol: z.string().trim().min(1).max(30),
+    kind: z.enum(["base", "derived"]), baseUnitId: id.optional(),
+    unitsPerUnit: positive, active: z.boolean().default(true),
+  }).strict().superRefine((data, ctx) => {
+    if (data.kind === "base" && (data.baseUnitId || data.unitsPerUnit !== 1))
+      ctx.addIssue({ code: "custom", message: "La unidad base equivale a 1 de sí misma." });
+    if (data.kind === "derived" && !data.baseUnitId)
+      ctx.addIssue({ code: "custom", message: "Selecciona la unidad base de equivalencia." });
+  }),
   materials: z.object({
-    name: required, baseUnit: z.enum(["sheet", "piece", "gram", "millilitre", "centimetre"]),
-    lines, active: z.boolean().default(true),
-  }).strict(),
+    name: required, baseUnit: z.enum(["sheet", "piece", "gram", "millilitre", "centimetre"]).optional(),
+    baseUnitId: id.optional(), lines, active: z.boolean().default(true),
+  }).strict().refine(data => Boolean(data.baseUnit || data.baseUnitId), "Selecciona una unidad base."),
   presentations: z.object({
     materialId: id, name: required, unitsPerPackage: positive,
+    unitId: id.optional(), active: z.boolean().default(true),
   }).strict(),
   purchases: z.object({
     presentationId: id, supplierId: id,
