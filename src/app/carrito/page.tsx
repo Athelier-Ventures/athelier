@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import "./cart.css";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import CartItemEditor from "./cart-item-editor";
 import { loadCart, saveCart, type CartItem } from "@/lib/cart-client";
 import { useSiteLanguage } from "@/lib/language-client";
 import { inclusiveTaxBreakdown } from "@/lib/iva";
@@ -19,6 +20,8 @@ export default function CartPage() {
   const [submissionAvailable,setSubmissionAvailable]=useState<boolean|null>(null);
   const [sendError,setSendError]=useState("");
   const [reference,setReference]=useState("");
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [editNotice,setEditNotice]=useState("");
   useEffect(() => {
     setItems(loadCart());
     let active=true;
@@ -30,6 +33,7 @@ export default function CartPage() {
   const total = items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
   async function sendToWorkshop(e:FormEvent<HTMLFormElement>){
     e.preventDefault();
+    if(editingId){setSendError(en?"Save or cancel the pending cart edits first.":"Guarda o cancela los cambios pendientes del carrito.");return;}
     if(submissionAvailable!==true){setSendError("El envío al taller está deshabilitado hasta configurar el almacenamiento privado.");return;}setSendError("");setReference("");setSending(true);
     try{
       const ref=await submitCustomerRequest(items,contact);
@@ -37,7 +41,18 @@ export default function CartPage() {
     }catch(err){setSendError(err instanceof Error?err.message:"No se pudo enviar la solicitud.");}
     finally{setSending(false);}
   }
-  function remove(id: string) { const removed=items.find(item=>item.id===id); const next = items.filter(item=>item.id!==id); setItems(next); saveCart(next); if(removed) void deletePrivatePhotos(id,removed.photoAttachments??[]).catch(()=>{}); }
+  function remove(id: string) {
+    const removed=items.find(item=>item.id===id);
+    const next=items.filter(item=>item.id!==id);
+    saveCart(next); setItems(next); setEditingId(null); setReference(""); setEditNotice("");
+    if(removed) void deletePrivatePhotos(id,removed.photoAttachments??[]).catch(()=>{});
+  }
+  function saveEditedItem(updated:CartItem) {
+    const next=items.map(item=>item.id===updated.id?updated:item);
+    if(!next.some(item=>item.id===updated.id)) throw new Error("El artículo ya no está en el carrito.");
+    saveCart(next); setItems(next); setEditingId(null); setReference(""); setSendError("");
+    setEditNotice(en?"Your cart was updated successfully.":"Cambios del carrito guardados correctamente.");
+  }
   // Indicative only; fiscal treatment of each product is determined at checkout.
   const illustrativeVat = inclusiveTaxBreakdown(total).taxCents;
   return <main className="cart">
@@ -52,14 +67,24 @@ export default function CartPage() {
         <Link href="/#lineas">{en ? "Discover the collections" : "Descubrir las colecciones"}</Link>
       </section> :
       <section className="cart__items">
-        {items.map(item=><article key={item.id} className="cart__item">
+        {editNotice&&<p className="cart__edit-success" role="status">{editNotice}</p>}
+        {items.map(item=><Fragment key={item.id}><article className="cart__item">
           <div><h2>{item.productTitle}</h2>
             {item.optionLabels.length>0&&<ul>{item.optionLabels.map((label,i)=><li key={i}>{label}</li>)}</ul>}
             {(item.photoAttachments?.length??0)>0&&<p>{en ? "Private photos stored on this device" : "Fotografías privadas guardadas en este dispositivo"}: {item.photoAttachments?.map(photo=>photo.slotLabel+" — "+photo.fileName).join("; ")}. {en ? "They will be sent when you submit your request." : "Se enviarán al taller al completar la solicitud."}</p>}
             <small>{en ? "Quantity" : "Cantidad"}: {item.quantity}</small></div>
           <div><strong>{money(item.unitPriceCents*item.quantity)}</strong>
+            <button type="button" aria-expanded={editingId===item.id} aria-controls={"cart-edit-"+item.id}
+              onClick={()=>{setEditingId(old=>old===item.id?null:item.id);setEditNotice("");}}>
+              {en ? "Edit" : "Editar"}
+            </button>
             <button type="button" onClick={()=>remove(item.id)}>{en ? "Remove" : "Quitar"}</button></div>
-        </article>)}
+        </article>
+        {editingId===item.id&&<div id={"cart-edit-"+item.id}><CartItemEditor
+          item={item} en={en} onSave={saveEditedItem} onCancel={()=>setEditingId(null)}
+        /></div>}
+        </Fragment>)}
+        <p className="cart__more-products"><Link href="/#lineas">{en?"Add another product":"Agregar otro producto"}</Link></p>
         <div className="cart__total">
           <span>{en ? "Estimated total (tax included where applicable)" : "Total estimado (IVA incluido cuando corresponda)"}</span>
           <strong>{money(total)}</strong>
@@ -82,7 +107,7 @@ export default function CartPage() {
             <label>{en ? "Notes for the studio (optional)" : "Indicaciones para el taller (opcional)"}<textarea rows={3} maxLength={1500} value={contact.note} onChange={e=>setContact(c=>({...c,note:e.target.value}))}/></label>
             <div className="cart__honeypot" aria-hidden="true"><label>Website<input autoComplete="off" tabIndex={-1} value={contact.website} onChange={e=>setContact(c=>({...c,website:e.target.value}))}/></label></div>
             <label className="cart__consent"><input type="checkbox" required checked={contact.consent} onChange={e=>setContact(c=>({...c,consent:e.target.checked}))}/>{en ? "I authorize ATHELIER to receive my contact details and photos to prepare my request." : "Autorizo a ATHELIER a recibir mis datos de contacto y fotografías para atender esta solicitud."}</label>
-            <button type="submit" disabled={sending || !contact.consent || submissionAvailable!==true}>{sending ? (en ? "Sending…" : "Enviando…") : (en ? "Send request to studio" : "Enviar solicitud al taller")}</button>
+            <button type="submit" disabled={sending || Boolean(editingId) || !contact.consent || submissionAvailable!==true}>{sending ? (en ? "Sending…" : "Enviando…") : (en ? "Send request to studio" : "Enviar solicitud al taller")}</button>
           </form>}
           {sendError&&<p className="cart__request-error" role="alert">{sendError}</p>}
         </section>
