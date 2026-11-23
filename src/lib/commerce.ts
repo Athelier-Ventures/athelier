@@ -161,10 +161,16 @@ export function weightedUnitCost(
 }
 
 /** Sales prices are decided by the owner, not derived from material costs. */
+/** Existing standard notebook is eligible without a data migration. Explicit false in Firestore overrides the legacy default. */
+export function permitsBasePurchase(product: Pick<CommercialProduct,"title"|"allowBasePurchase">): boolean {
+  if(product.allowBasePurchase===true)return true;
+  if(product.allowBasePurchase===false)return false;
+  return product.title.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()==="libreta personalizada estandar";
+}
 export function configuredUnitPriceCents(product: CommercialProduct, choices: ConfiguredChoice[]): number {
   // Only products explicitly enabled by their owner can be purchased without any additions.
   // Selecting any option restores the normal required-group validation.
-  const baseOnly = choices.length === 0 && product.allowBasePurchase === true;
+  const baseOnly = choices.length === 0 && permitsBasePurchase(product);
   let total = validInteger(product.basePriceCents, "basePriceCents");
   const groups = new Map(product.optionGroups.map((group) => [group.id, group]));
   const selectionCount = new Map<string, number>();
@@ -187,7 +193,7 @@ export function configuredUnitPriceCents(product: CommercialProduct, choices: Co
     // The owner may allow a standard base product while keeping e.g. "Tipo de hojas" required.
     // Only explicitly named add-on groups become optional when standard purchase is enabled.
     const addonGroup = /^(adicionales?|extras?|complementos?|secciones)$/i.test(group.title.trim());
-    const min = product.allowBasePurchase && addonGroup ? 0 : Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
+    const min = permitsBasePurchase(product) && addonGroup ? 0 : Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
     const max = Math.min(group.selection === "single" ? 1 : Infinity, group.maxSelections ?? Infinity);
     if ((!baseOnly && count < min) || count > max) throw new Error("Invalid option count: " + group.id);
   }
