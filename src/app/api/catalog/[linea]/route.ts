@@ -20,6 +20,8 @@ export async function GET(_request: Request, { params }: Params) {
         title: product.title,
         description: product.description ?? "",
         imageUrl: product.imageUrl ?? "",
+        allowBasePurchase: product.allowBasePurchase === true,
+        photoSlots: Array.isArray(product.photoSlots) ? product.photoSlots : [],
         basePriceCents: product.basePriceCents,
         currency: "MXN",
         optionGroups: product.optionGroups ?? [],
