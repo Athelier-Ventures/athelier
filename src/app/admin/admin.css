@@ -79,3 +79,13 @@
   .admin__bell-label{display:none}
   .admin__bell{width:46px;justify-content:center}
 }
+
+.admin__gallery-editor{border:1px solid #dcc5ba;background:#fff8f3;border-radius:10px;padding:16px;margin:9px 0}
+.admin__gallery-editor h3{margin:0 0 8px}
+.admin__gallery-editor p{font-size:12px;line-height:1.6;color:#795e54}
+.admin__gallery-editor>label{display:grid;gap:8px;font:600 13px system-ui,sans-serif}
+.admin__gallery-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.admin__gallery-entry{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid #e4cabe;border-radius:8px;background:#fff;padding:8px}
+.admin__gallery-entry img{display:block;width:60px;height:60px;object-fit:contain;background:#f6ece6;border-radius:5px}
+.admin__gallery-entry span{flex:1;min-width:55px;font:600 12px system-ui,sans-serif}
+.admin__gallery-entry .admin__button{font-size:12px;padding:6px 10px}
