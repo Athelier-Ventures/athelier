@@ -52,3 +52,38 @@ export function addConfiguredProduct(product: PublicProduct, choices: Configured
   saveCart([...loadCart(), item]);
   return item;
 }
+
+
+/** Recalculate a cart item using the currently published product rules without changing its identity. */
+export function reviseConfiguredCartItem(
+  original: CartItem,
+  product: PublicProduct,
+  choices: ConfiguredChoice[],
+  quantity: number,
+  photoAttachments: PhotoReference[] = original.photoAttachments ?? [],
+): CartItem {
+  if (product.id !== original.productId) throw new Error("Producto incorrecto");
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 1000)
+    throw new Error("La cantidad debe estar entre 1 y 1000.");
+  for (const choice of choices) {
+    if (choice.units !== undefined && (!Number.isSafeInteger(choice.units) || choice.units < 1 || choice.units > 1000))
+      throw new Error("La cantidad de cada adicional debe estar entre 1 y 1000.");
+  }
+  const unitPriceCents = configuredUnitPriceCents({
+    ...product, status: "published", baseMaterials: [],
+  } as CommercialProduct, choices);
+  if (!Number.isSafeInteger(unitPriceCents * quantity))
+    throw new Error("El subtotal es demasiado grande.");
+  const optionLabels = choices.map(choice => {
+    const option = product.optionGroups.find(group => group.id === choice.groupId)?.options.find(x => x.id === choice.optionId);
+    if (!option) throw new Error("La opción seleccionada ya no está disponible.");
+    return option.label + (option.pricingMode === "perUnit" && (choice.units ?? 1) > 1 ? " × " + choice.units : "");
+  });
+  return {
+    ...original,
+    productTitle: product.title,
+    selections: choices.map(choice => ({ ...choice })),
+    optionLabels, unitPriceCents, quantity,
+    photoAttachments,
+  };
+}
