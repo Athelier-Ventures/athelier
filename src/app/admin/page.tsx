@@ -10,6 +10,12 @@ import { inclusiveTaxBreakdown, type VatTreatment } from "@/lib/iva";
 import "./admin.css";
 
 type Resource = "suppliers" | "units" | "materials" | "presentations" | "purchases" | "products";
+type CustomerRequest = {
+  id:string;name:string;email:string;phone:string;note:string;createdAt:string;
+  status:string;totalCents:number;
+  items:Array<{id:string;productTitle:string;quantity:number;unitPriceCents:number;selections:Array<{groupId:string;optionId:string;units?:number}>}>;
+  photos:Array<{id:string;itemId:string;slotLabel:string;fileName:string;uploaded:boolean}>;
+};
 type UnitDraft = { name: string; symbol: string; kind: "base" | "derived"; baseUnitId: string; unitsPerUnit: string; active: boolean };
 const emptyUnit = (): UnitDraft => ({name:"",symbol:"",kind:"base",baseUnitId:"",unitsPerUnit:"1",active:true});
 const legacyUnits: Record<string,string> = {sheet:"Hoja",piece:"Pieza",gram:"Gramo",millilitre:"Mililitro",centimetre:"Centímetro"};
@@ -34,7 +40,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tab, setTab] = useState<Resource>("materials");
+  const [tab, setTab] = useState<Resource | "requests">("materials");
   const [rows, setRows] = useState<Record<Resource, Entry[]>>({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
   const [costFrom, setCostFrom] = useState("");
   const [costTo, setCostTo] = useState("");
@@ -54,6 +60,8 @@ export default function AdminPage() {
   const [product, setProduct] = useState<Draft>(newDraft);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [newGroupTitle, setNewGroupTitle] = useState("");
+  const [customerRequests,setCustomerRequests]=useState<CustomerRequest[]>([]);
+  const [requestsLoading,setRequestsLoading]=useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [newBillId, setNewBillId] = useState("");
   const [newBillUnits, setNewBillUnits] = useState("1");
@@ -109,6 +117,30 @@ export default function AdminPage() {
     setError("");
     try { await signInWithPopup(browserAuth(), googleProvider()); }
     catch (e) { setError(e instanceof Error ? e.message : "Error al iniciar sesión"); }
+  }
+  async function loadRequests(currentUser=user) {
+    if(!currentUser)return;
+    setRequestsLoading(true);setError("");
+    try {
+      const result=await request<{items:CustomerRequest[]}>("/api/admin/customer-requests","GET",undefined,currentUser);
+      setCustomerRequests(result.items);
+    } catch(e){setError(e instanceof Error?e.message:"No se pudieron consultar las solicitudes.");}
+    finally{setRequestsLoading(false);}
+  }
+  async function downloadRequestPhoto(requestId:string,photoId:string) {
+    if(!user)return;
+    setError("");
+    try {
+      const token=await user.getIdToken();
+      const res=await fetch("/api/admin/customer-requests/"+encodeURIComponent(requestId)+"/photos/"+encodeURIComponent(photoId),{
+        headers:{Authorization:"Bearer "+token},cache:"no-store"
+      });
+      if(!res.ok)throw new Error("No se pudo descargar la fotografía privada.");
+      const objectUrl=URL.createObjectURL(await res.blob());
+      const a=document.createElement("a");a.href=objectUrl;a.download="athelier-"+requestId+"-"+photoId;
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);
+    }catch(e){setError(e instanceof Error?e.message:"Error al descargar fotografía.");}
   }
   async function logout() {
     await signOut(browserAuth()); setUser(null); setAuthorized(false); setRows({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
@@ -236,6 +268,7 @@ export default function AdminPage() {
           </div>
           <nav className="admin__tabs" aria-label="Administración">
             {resources.map(r => <button key={r} type="button" className={r===tab ? "is-selected" : ""} onClick={() => {setTab(r);setError("");setNotice("");}}>{tabs[r]} <span>{rows[r].length}</span></button>)}
+            <button type="button" className={tab==="requests"?"is-selected":""} onClick={()=>{setTab("requests");setNotice("");void loadRequests();}}>Solicitudes</button>
           </nav>
           {error && <p className="admin__error" role="alert">{error}</p>}
           {notice && <p className="admin__notice" role="status">{notice}</p>}
@@ -469,6 +502,26 @@ export default function AdminPage() {
               </div>)}</div>
             </section>
           )}
+          {tab === "requests" && <section className="admin__section admin__requests">
+            <h2>Solicitudes de personalización</h2>
+            <p>Solicitudes y fotografías recibidas en privado. No son órdenes cobradas; contacta al cliente para confirmar disponibilidad y pago.</p>
+            <button type="button" className="admin__button admin__button--ghost" disabled={requestsLoading} onClick={()=>void loadRequests()}>{requestsLoading?"Actualizando…":"Actualizar solicitudes"}</button>
+            {customerRequests.length===0&&!requestsLoading&&<p>No hay solicitudes recibidas.</p>}
+            {customerRequests.map(item=><article className="admin__request" key={item.id}>
+              <h3>{item.name} <small>· {new Date(item.createdAt).toLocaleString("es-MX")}</small></h3>
+              <p><strong>Referencia:</strong> {item.id}</p>
+              <p><strong>Contacto:</strong> {item.email||"Sin correo"} · {item.phone||"Sin teléfono"}</p>
+              {item.note&&<p><strong>Indicaciones:</strong> {item.note}</p>}
+              <ul>{item.items.map(line=><li key={line.id}>{line.productTitle} × {line.quantity} — {money(line.unitPriceCents)} por pieza</li>)}</ul>
+              <p><strong>Total de referencia:</strong> {money(item.totalCents)} (sin pago recibido).</p>
+              {item.photos.length>0&&<div><strong>Fotografías privadas:</strong>
+                <div className="admin__request-photos">{item.photos.filter(photo=>photo.uploaded).map(photo=>
+                  <button type="button" className="admin__button admin__button--ghost" key={photo.id} onClick={()=>void downloadRequestPhoto(item.id,photo.id)}>
+                    Descargar {photo.slotLabel}: {photo.fileName}
+                  </button>)}</div>
+              </div>}
+            </article>)}
+          </section>}
           <footer className="admin__footer">Los cambios de costos no modifican automáticamente los precios de venta. Las compras conservan sus datos históricos. MXN · Athelier.</footer>
         </div>
       )}
