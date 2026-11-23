@@ -16,12 +16,21 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [contact,setContact] = useState({name:"",email:"",phone:"",note:"",consent:false,website:""});
   const [sending,setSending]=useState(false);
+  const [submissionAvailable,setSubmissionAvailable]=useState<boolean|null>(null);
   const [sendError,setSendError]=useState("");
   const [reference,setReference]=useState("");
-  useEffect(() => { setItems(loadCart()); }, []);
+  useEffect(() => {
+    setItems(loadCart());
+    let active=true;
+    fetch("/api/customer-requests",{cache:"no-store"}).then(r=>r.json()).then(x=>{
+      if(active)setSubmissionAvailable(x.available===true);
+    }).catch(()=>{if(active)setSubmissionAvailable(false);});
+    return ()=>{active=false};
+  }, []);
   const total = items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
   async function sendToWorkshop(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();setSendError("");setReference("");setSending(true);
+    e.preventDefault();
+    if(submissionAvailable!==true){setSendError("El envío al taller está deshabilitado hasta configurar el almacenamiento privado.");return;}setSendError("");setReference("");setSending(true);
     try{
       const ref=await submitCustomerRequest(items,contact);
       setReference(ref);
@@ -64,6 +73,7 @@ export default function CartPage() {
         <section className="cart__request">
           <h2>{en ? "Send your customization request to ATHELIER" : "Enviar solicitud de personalización a ATHELIER"}</h2>
           <p>{en ? "This sends your product selections and private photos to the studio so they can contact you. It is not a purchase or payment." : "Envía al taller los productos elegidos y tus fotografías privadas para que te contacten. No es una compra ni un pago."}</p>
+          {submissionAvailable===false&&<p className="cart__request-error" role="status">{en ? "Private photo intake is unavailable in this environment. The cart and chosen photos remain on your device." : "El envío privado al taller no está habilitado en este entorno. Tu carrito y fotografías permanecen en este dispositivo."}</p>}
           {reference?<p className="cart__request-ok" role="status">{en ? "Request received. Reference: " : "Solicitud recibida. Referencia: "}<strong>{reference}</strong>. {en ? "The studio can now see the photos in its administrator." : "El taller ya puede ver las fotografías en su administrador."}</p>:
           <form onSubmit={e=>void sendToWorkshop(e)}>
             <label>{en ? "Your name" : "Nombre"}<input required minLength={2} maxLength={100} value={contact.name} onChange={e=>setContact(c=>({...c,name:e.target.value}))}/></label>
@@ -72,7 +82,7 @@ export default function CartPage() {
             <label>{en ? "Notes for the studio (optional)" : "Indicaciones para el taller (opcional)"}<textarea rows={3} maxLength={1500} value={contact.note} onChange={e=>setContact(c=>({...c,note:e.target.value}))}/></label>
             <div className="cart__honeypot" aria-hidden="true"><label>Website<input autoComplete="off" tabIndex={-1} value={contact.website} onChange={e=>setContact(c=>({...c,website:e.target.value}))}/></label></div>
             <label className="cart__consent"><input type="checkbox" required checked={contact.consent} onChange={e=>setContact(c=>({...c,consent:e.target.checked}))}/>{en ? "I authorize ATHELIER to receive my contact details and photos to prepare my request." : "Autorizo a ATHELIER a recibir mis datos de contacto y fotografías para atender esta solicitud."}</label>
-            <button type="submit" disabled={sending || !contact.consent}>{sending ? (en ? "Sending…" : "Enviando…") : (en ? "Send request to studio" : "Enviar solicitud al taller")}</button>
+            <button type="submit" disabled={sending || !contact.consent || submissionAvailable!==true}>{sending ? (en ? "Sending…" : "Enviando…") : (en ? "Send request to studio" : "Enviar solicitud al taller")}</button>
           </form>}
           {sendError&&<p className="cart__request-error" role="alert">{sendError}</p>}
         </section>
