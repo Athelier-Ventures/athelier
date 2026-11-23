@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const photo = form.get("image");
     if (!(photo instanceof File)) throw new AdminApiError(400, "IMAGE_REQUIRED", "Selecciona una fotografía.");
-    if (photo.size === 0 || photo.size > 5*1024*1024) throw new AdminApiError(413, "IMAGE_TOO_LARGE", "La fotografía debe pesar entre 1 byte y 5 MB.");
+    if (photo.size === 0 || photo.size > 3*1024*1024) throw new AdminApiError(413, "IMAGE_TOO_LARGE", "La fotografía debe pesar entre 1 byte y 3 MB.");
     if (!["image/jpeg", "image/png", "image/webp"].includes(photo.type)) throw new AdminApiError(400,"IMAGE_FORMAT","Sólo se aceptan imágenes JPG, PNG y WebP.");
     const bytes = new Uint8Array(await photo.arrayBuffer());
     if (!verifyImage(bytes, photo.type)) throw new AdminApiError(400,"IMAGE_CONTENT","El contenido no corresponde a un formato de imagen permitido.");
