@@ -15,15 +15,16 @@ const emptyUnit = (): UnitDraft => ({name:"",symbol:"",kind:"base",baseUnitId:""
 const legacyUnits: Record<string,string> = {sheet:"Hoja",piece:"Pieza",gram:"Gramo",millilitre:"Mililitro",centimetre:"Centímetro"};
 type Entry = { id: string; [key: string]: unknown };
 type Option = { id: string; label: string; priceCents: number; pricingMode: "fixed" | "perUnit" };
-type Group = { id: string; title: string; selection: "single" | "multiple"; required: boolean; options: Option[] };
+type Group = { id: string; title: string; selection: "single" | "multiple"; required: boolean; minSelections?: number; maxSelections?: number; options: Option[] };
+type PhotoSlot = { id: string; label: string; maxFiles: number };
 type Bill = { materialId: string; unitsConsumed: number };
-type Draft = { title: string; description: string; imageUrl: string; basePriceCents: number; currency: "MXN"; lineIds: LineId[]; status: "draft" | "published" | "archived"; optionGroups: Group[]; baseMaterials: Bill[] };
+type Draft = { title: string; description: string; imageUrl: string; allowBasePurchase: boolean; photoSlots: PhotoSlot[]; basePriceCents: number; currency: "MXN"; lineIds: LineId[]; status: "draft" | "published" | "archived"; optionGroups: Group[]; baseMaterials: Bill[] };
 const resources: Resource[] = ["suppliers", "units", "materials", "presentations", "purchases", "products"];
 const tabs: Record<Resource, string> = { suppliers: "Proveedores", units: "Unidades", materials: "Insumos", presentations: "Presentaciones", purchases: "Compras", products: "Productos" };
 const money = (cents: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 const asCents = (value: string) => Math.round(Number(value) * 100);
 const unitMoney = (cents: number) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:4,maximumFractionDigits:6}).format(cents / 100);
-const newDraft = (): Draft => ({ title: "", description: "", imageUrl: "", basePriceCents: 0, currency: "MXN", lineIds: ["personalizaciones"], status: "draft", optionGroups: [], baseMaterials: [] });
+const newDraft = (): Draft => ({ title: "", description: "", imageUrl: "", allowBasePurchase: false, photoSlots: [], basePriceCents: 0, currency: "MXN", lineIds: ["personalizaciones"], status: "draft", optionGroups: [], baseMaterials: [] });
 const isLineId = (x: string): x is LineId => ["reposteria", "personalizaciones", "fotografia"].includes(x);
 
 export default function AdminPage() {
@@ -53,6 +54,7 @@ export default function AdminPage() {
   const [product, setProduct] = useState<Draft>(newDraft);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [newGroupTitle, setNewGroupTitle] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [newBillId, setNewBillId] = useState("");
   const [newBillUnits, setNewBillUnits] = useState("1");
 
@@ -125,6 +127,25 @@ export default function AdminPage() {
       if (resource === "products") { setProduct(newDraft()); setEditingProduct(null); }
     } catch(e) { setError(e instanceof Error ? e.message : "Error al guardar"); }
     finally { setLoading(false); }
+  }
+  async function uploadProductImage(file: File) {
+    if (!user) { setError("Primero inicia sesión"); return; }
+    setError(""); setNotice(""); setImageUploading(true);
+    try {
+      if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+        throw new Error("Selecciona una imagen JPG, PNG o WebP de hasta 5 MB.");
+      const form = new FormData();
+      form.append("image", file);
+      const token = await user.getIdToken();
+      const response = await fetch("/api/admin/product-image", {
+        method: "POST", headers: { Authorization: "Bearer " + token }, body: form, cache: "no-store",
+      });
+      const data: { imageUrl?: string; error?: string } = await response.json();
+      if (!response.ok || !data.imageUrl) throw new Error(data.error || "No se pudo subir la imagen");
+      setProduct(previous => ({ ...previous, imageUrl: data.imageUrl! }));
+      setNotice("Imagen cargada. Guarda el producto para publicarla.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Error de imagen"); }
+    finally { setImageUploading(false); }
   }
   async function deleteRecord(resource: Resource, id: string, name: string) {
     if (resource === "purchases") return;
@@ -378,7 +399,23 @@ export default function AdminPage() {
               <form className="admin__form" onSubmit={(e:FormEvent)=>{e.preventDefault();void save("products",product,editingProduct||undefined);}}>
                 <label>Nombre del producto<input required maxLength={180} value={product.title} onChange={e=>setProduct(p=>({...p,title:e.target.value}))} placeholder="Ej. Libreta personalizada"/></label>
                 <label>Descripción<textarea maxLength={1500} rows={3} value={product.description} onChange={e=>setProduct(p=>({...p,description:e.target.value}))}/></label>
-                <label>URL pública de imagen (opcional)<input type="url" placeholder="https://..." value={product.imageUrl} onChange={e=>setProduct(p=>({...p,imageUrl:e.target.value}))}/></label>
+                <label>URL pública de imagen (opcional)<input type="text" placeholder="https://..." value={product.imageUrl} onChange={e=>setProduct(p=>({...p,imageUrl:e.target.value}))}/></label>
+                <label>Adjuntar imagen principal (JPG, PNG o WebP; máximo 5 MB)
+                  <input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageUploading || loading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadProductImage(file);e.target.value="";}}/>
+                </label>
+                {imageUploading&&<p className="admin__full" role="status">Subiendo fotografía…</p>}
+                {product.imageUrl&&<p className="admin__full">Imagen seleccionada: {product.imageUrl.startsWith("/api/") ? "Cargada en almacenamiento privado para uso del catálogo" : "URL externa"}</p>}
+                <label className="admin__check"><input type="checkbox" checked={product.allowBasePurchase} onChange={e=>setProduct(p=>({...p,allowBasePurchase:e.target.checked}))}/>Permitir comprar el producto estándar sin adicionales, incluso si algún grupo está marcado como obligatorio.</label>
+                <div className="admin__full">
+                  <h3>Fotografías que puede aportar el cliente</h3>
+                  <p>Selecciona las áreas del producto para las que se aceptan imágenes. Los archivos privados permanecerán en el dispositivo del cliente hasta que exista un envío seguro de pedidos.</p>
+                  {product.photoSlots.map((slot,i)=><div key={slot.id} className="admin__option">
+                    <label>Área / sección<input maxLength={100} value={slot.label} onChange={e=>setProduct(p=>({...p,photoSlots:p.photoSlots.map((x,j)=>j===i?{...x,label:e.target.value}:x)}))}/></label>
+                    <label>Máximo de fotos<input type="number" min="1" max="10" value={slot.maxFiles} onChange={e=>setProduct(p=>({...p,photoSlots:p.photoSlots.map((x,j)=>j===i?{...x,maxFiles:Number(e.target.value)}:x)}))}/></label>
+                    <button type="button" className="admin__button admin__button--ghost" onClick={()=>setProduct(p=>({...p,photoSlots:p.photoSlots.filter((_,j)=>j!==i)}))}>Quitar</button>
+                  </div>)}
+                  <button type="button" className="admin__button admin__button--ghost" disabled={product.photoSlots.length>=10} onClick={()=>setProduct(p=>({...p,photoSlots:[...p.photoSlots,{id:crypto.randomUUID(),label:"Nueva sección",maxFiles:1}]}))}>+ Agregar sección de fotografías</button>
+                </div>
                 <label>Precio base de venta (MXN, IVA incluido cuando aplique)<input type="number" min="0" step=".01" required value={(product.basePriceCents/100).toString()} onChange={e=>setProduct(p=>({...p,basePriceCents:asCents(e.target.value)}))}/></label>
                 <fieldset className="admin__fieldset"><legend>Publicar en</legend>{businessLines.map(l=><label className="admin__check" key={l.id}><input type="checkbox" checked={product.lineIds.includes(l.id)} onChange={()=>toggleLine(l.id,product.lineIds,next=>setProduct(p=>({...p,lineIds:next})))}/>{l.name}</label>)}</fieldset>
                 <label>Estado<select value={product.status} onChange={e=>setProduct(p=>({...p,status:e.target.value as Draft["status"]}))}><option value="draft">Borrador (no visible)</option><option value="published">Publicado</option><option value="archived">Archivado</option></select></label>
@@ -389,6 +426,11 @@ export default function AdminPage() {
                     <label>Nombre del grupo<input value={g.title} onChange={e=>updateGroup(i,group=>({...group,title:e.target.value}))}/></label>
                     <label>Selección<select value={g.selection} onChange={e=>updateGroup(i,group=>({...group,selection:e.target.value as Group["selection"]}))}><option value="single">Una opción</option><option value="multiple">Varias opciones</option></select></label>
                     <label className="admin__check"><input type="checkbox" checked={g.required} onChange={e=>updateGroup(i,group=>({...group,required:e.target.checked}))}/>Obligatorio</label>
+                    <div className="admin__actions">
+                      <span>Orden {i+1} de {product.optionGroups.length}</span>
+                      <button type="button" className="admin__button admin__button--ghost" disabled={i===0} onClick={()=>setProduct(p=>{const groups=[...p.optionGroups];[groups[i-1],groups[i]]=[groups[i],groups[i-1]];return {...p,optionGroups:groups};})}>↑ Subir</button>
+                      <button type="button" className="admin__button admin__button--ghost" disabled={i===product.optionGroups.length-1} onClick={()=>setProduct(p=>{const groups=[...p.optionGroups];[groups[i],groups[i+1]]=[groups[i+1],groups[i]];return {...p,optionGroups:groups};})}>↓ Bajar</button>
+                    </div>
                     {g.options.map((option,j)=><div className="admin__option" key={option.id}>
                       <label>Opción<input value={option.label} onChange={e=>updateGroup(i,group=>({...group,options:group.options.map((o,k)=>k===j?{...o,label:e.target.value}:o)}))}/></label>
                       <label>Adicional MXN<input type="number" step=".01" min="0" value={option.priceCents/100} onChange={e=>updateGroup(i,group=>({...group,options:group.options.map((o,k)=>k===j?{...o,priceCents:asCents(e.target.value)}:o)}))}/></label>
@@ -421,9 +463,9 @@ export default function AdminPage() {
               <div className="admin__records">{rows.products.map(item=><div className="admin__record" key={item.id}>
                 <div><strong>{String(item.title)}</strong><small>{String(item.status)} · {(item.lineIds as string[]).join(", ")}</small></div>
                 <strong>{money(Number(item.basePriceCents))}</strong>
-                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
+                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),allowBasePurchase:item.allowBasePurchase===true,photoSlots:Array.isArray(item.photoSlots)?item.photoSlots as PhotoSlot[]:[],basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
                 {item.status==="draft" ? <button type="button" className="admin__button admin__button--ghost" disabled={loading} onClick={()=>void deleteRecord("products",item.id,String(item.title))}>Eliminar borrador</button> :
-                 <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
+                 <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",allowBasePurchase:item.allowBasePurchase===true,photoSlots:item.photoSlots??[],basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
               </div>)}</div>
             </section>
           )}
