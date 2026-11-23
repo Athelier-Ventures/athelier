@@ -20,8 +20,9 @@ export async function GET(_request: Request, { params }: Params) {
       if(!payload||typeof payload!=="object"||!("items" in payload)||!Array.isArray(payload.items))
         throw new AdminApiError(503,"PREVIEW_CATALOG_INVALID","Catálogo de prueba inválido.");
       const items=payload.items.map((raw:unknown)=>{
-        const p=raw as {id:string;title:string;description?:string;imageUrl?:string;allowBasePurchase?:boolean;photoSlots?:unknown[];basePriceCents:number;optionGroups:unknown[];lineIds:string[]};
+        const p=raw as {id:string;title:string;description?:string;imageUrl?:string;galleryImageUrls?:string[];allowBasePurchase?:boolean;photoSlots?:unknown[];basePriceCents:number;optionGroups:unknown[];lineIds:string[]};
         return {id:p.id,title:p.title,description:p.description??"",imageUrl:p.imageUrl??"",
+          galleryImageUrls:Array.isArray(p.galleryImageUrls)?p.galleryImageUrls:[],
           allowBasePurchase:permitsBasePurchase(p as CommercialProduct),
           photoSlots:photoSlotsForProduct({title:p.title,photoSlots:p.photoSlots?.length ? p.photoSlots as CommercialProduct['photoSlots'] : undefined}),basePriceCents:p.basePriceCents,currency:"MXN",
           optionGroups:p.optionGroups??[],lineIds:p.lineIds??[]};
@@ -38,6 +39,7 @@ export async function GET(_request: Request, { params }: Params) {
         title: product.title,
         description: product.description ?? "",
         imageUrl: product.imageUrl ?? "",
+        galleryImageUrls: Array.isArray(product.galleryImageUrls) ? product.galleryImageUrls : [],
         allowBasePurchase: permitsBasePurchase(product as CommercialProduct),
         photoSlots: photoSlotsForProduct(product as CommercialProduct),
         basePriceCents: product.basePriceCents,

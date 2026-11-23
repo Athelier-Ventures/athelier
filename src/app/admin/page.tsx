@@ -24,13 +24,13 @@ type Option = { id: string; label: string; priceCents: number; pricingMode: "fix
 type Group = { id: string; title: string; selection: "single" | "multiple"; required: boolean; minSelections?: number; maxSelections?: number; options: Option[] };
 type PhotoSlot = { id: string; label: string; maxFiles: number };
 type Bill = { materialId: string; unitsConsumed: number };
-type Draft = { title: string; description: string; imageUrl: string; allowBasePurchase: boolean; photoSlots: PhotoSlot[]; basePriceCents: number; currency: "MXN"; lineIds: LineId[]; status: "draft" | "published" | "archived"; optionGroups: Group[]; baseMaterials: Bill[] };
+type Draft = { title: string; description: string; imageUrl: string; galleryImageUrls: string[]; allowBasePurchase: boolean; photoSlots: PhotoSlot[]; basePriceCents: number; currency: "MXN"; lineIds: LineId[]; status: "draft" | "published" | "archived"; optionGroups: Group[]; baseMaterials: Bill[] };
 const resources: Resource[] = ["suppliers", "units", "materials", "presentations", "purchases", "products"];
 const tabs: Record<Resource, string> = { suppliers: "Proveedores", units: "Unidades", materials: "Insumos", presentations: "Presentaciones", purchases: "Compras", products: "Productos" };
 const money = (cents: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 const asCents = (value: string) => Math.round(Number(value) * 100);
 const unitMoney = (cents: number) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:4,maximumFractionDigits:6}).format(cents / 100);
-const newDraft = (): Draft => ({ title: "", description: "", imageUrl: "", allowBasePurchase: false, photoSlots: [], basePriceCents: 0, currency: "MXN", lineIds: ["personalizaciones"], status: "draft", optionGroups: [], baseMaterials: [] });
+const newDraft = (): Draft => ({ title: "", description: "", imageUrl: "", galleryImageUrls: [], allowBasePurchase: false, photoSlots: [], basePriceCents: 0, currency: "MXN", lineIds: ["personalizaciones"], status: "draft", optionGroups: [], baseMaterials: [] });
 const isLineId = (x: string): x is LineId => ["reposteria", "personalizaciones", "fotografia"].includes(x);
 
 export default function AdminPage() {
@@ -201,6 +201,33 @@ export default function AdminPage() {
       setNotice("Imagen cargada. Guarda el producto para publicarla.");
     } catch (e) { setError(e instanceof Error ? e.message : "Error de imagen"); }
     finally { setImageUploading(false); }
+  }
+  async function uploadGalleryImages(files: File[]) {
+    if(!user){setError("Primero inicia sesión");return;}
+    if(files.length===0)return;
+    if(product.galleryImageUrls.length+files.length>6){
+      setError("Puedes agregar como máximo 6 fotografías adicionales por producto.");return;
+    }
+    setImageUploading(true);setError("");setNotice("");
+    try {
+      const token=await user.getIdToken();
+      const newUrls:string[]=[];
+      for(const file of files){
+        if(file.size===0||file.size>3*1024*1024||!["image/jpeg","image/png","image/webp"].includes(file.type))
+          throw new Error("Cada fotografía debe ser JPG, PNG o WebP y pesar máximo 3 MB.");
+        const body=new FormData();
+        body.append("image",file);
+        const response=await fetch("/api/admin/product-image",{
+          method:"POST",headers:{Authorization:"Bearer "+token},body,cache:"no-store",
+        });
+        const data:{imageUrl?:string;error?:string}=await response.json();
+        if(!response.ok||!data.imageUrl)throw new Error(data.error||"No se pudo cargar la fotografía.");
+        newUrls.push(data.imageUrl);
+        setProduct(previous=>({...previous,galleryImageUrls:[...previous.galleryImageUrls,data.imageUrl!]}));
+      }
+      setNotice(newUrls.length+" fotografía(s) adicionales cargadas. Guarda el producto para publicarlas.");
+    }catch(e){setError(e instanceof Error?e.message:"No se pudieron subir las fotografías.");}
+    finally{setImageUploading(false);}
   }
   async function deleteRecord(resource: Resource, id: string, name: string) {
     if (resource === "purchases") return;
@@ -471,6 +498,26 @@ export default function AdminPage() {
                 </label>
                 {imageUploading&&<p className="admin__full" role="status">Subiendo fotografía…</p>}
                 {product.imageUrl&&<p className="admin__full">Imagen seleccionada: {product.imageUrl.startsWith("/api/") ? "Cargada en almacenamiento privado para uso del catálogo" : "URL externa"}</p>}
+                <div className="admin__full admin__gallery-editor">
+                  <h3>Galería de producto — mostrar interiores sin recortar</h3>
+                  <p>La imagen principal se muestra completa. Añade hasta 6 fotografías de interiores, contraportada, detalles o un collage. Se mostrarán como miniaturas seleccionables en el catálogo. Estas imágenes son públicas sólo cuando el producto esté publicado.</p>
+                  <label>Subir fotografías adicionales (JPG, PNG o WebP; máximo 3 MB cada una)
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={imageUploading||loading||product.galleryImageUrls.length>=6}
+                      onChange={e=>{const files=Array.from(e.target.files??[]);if(files.length)void uploadGalleryImages(files);e.target.value="";}}/>
+                  </label>
+                  <div className="admin__gallery-list">
+                    {product.galleryImageUrls.map((url,i)=><div className="admin__gallery-entry" key={url}>
+                      <img src={url} alt={"Foto adicional "+(i+1)} loading="lazy"/>
+                      <span>Foto {i+1}</span>
+                      <button type="button" className="admin__button admin__button--ghost" disabled={imageUploading||i===0}
+                        onClick={()=>setProduct(p=>{const next=[...p.galleryImageUrls];[next[i-1],next[i]]=[next[i],next[i-1]];return {...p,galleryImageUrls:next};})}>↑</button>
+                      <button type="button" className="admin__button admin__button--ghost" disabled={imageUploading||i===product.galleryImageUrls.length-1}
+                        onClick={()=>setProduct(p=>{const next=[...p.galleryImageUrls];[next[i],next[i+1]]=[next[i+1],next[i]];return {...p,galleryImageUrls:next};})}>↓</button>
+                      <button type="button" className="admin__button admin__button--ghost" disabled={imageUploading}
+                        onClick={()=>setProduct(p=>({...p,galleryImageUrls:p.galleryImageUrls.filter((_,index)=>index!==i)}))}>Quitar</button>
+                    </div>)}
+                  </div>
+                </div>
                 <label className="admin__check"><input type="checkbox" checked={product.allowBasePurchase} onChange={e=>setProduct(p=>({...p,allowBasePurchase:e.target.checked}))}/>Permitir comprar el producto estándar sin adicionales, incluso si algún grupo está marcado como obligatorio.</label>
                 <div className="admin__full">
                   <h3>Fotografías que puede aportar el cliente</h3>
@@ -523,15 +570,15 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="admin__full"><strong>Costo estimado de materiales por producto: {inclusiveRecipeCost === null ? "Faltan costos de compra" : money(inclusiveRecipeCost)} IVA incluido</strong><p>Base sin IVA: {baseRecipeCost === null ? "Sin datos completos" : money(baseRecipeCost)} · Precio de venta: {money(product.basePriceCents)} (IVA incluido cuando aplique). No se suma IVA al precio de venta y el costo no lo modifica automáticamente.</p></div>
-                <div className="admin__actions admin__full"><button className="admin__button" disabled={loading || !product.lineIds.length}>{editingProduct?"Guardar cambios":"Crear producto"}</button>{editingProduct&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingProduct(null);setProduct(newDraft());}}>Cancelar edición</button>}</div>
+                <div className="admin__actions admin__full"><button className="admin__button" disabled={loading || imageUploading || !product.lineIds.length}>{editingProduct?"Guardar cambios":"Crear producto"}</button>{editingProduct&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingProduct(null);setProduct(newDraft());}}>Cancelar edición</button>}</div>
               </form>
               <h3>Productos registrados</h3>
               <div className="admin__records">{rows.products.map(item=><div className="admin__record" key={item.id}>
                 <div><strong>{String(item.title)}</strong><small>{String(item.status)} · {(item.lineIds as string[]).join(", ")}</small></div>
                 <strong>{money(Number(item.basePriceCents))}</strong>
-                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),allowBasePurchase:permitsBasePurchase({title:String(item.title),allowBasePurchase:typeof item.allowBasePurchase==="boolean" ? item.allowBasePurchase : undefined}),photoSlots:photoSlotsForProduct({title:String(item.title),photoSlots:Array.isArray(item.photoSlots)?item.photoSlots as PhotoSlot[]:undefined}),basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
+                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),galleryImageUrls:Array.isArray(item.galleryImageUrls)?item.galleryImageUrls as string[]:[],allowBasePurchase:permitsBasePurchase({title:String(item.title),allowBasePurchase:typeof item.allowBasePurchase==="boolean" ? item.allowBasePurchase : undefined}),photoSlots:photoSlotsForProduct({title:String(item.title),photoSlots:Array.isArray(item.photoSlots)?item.photoSlots as PhotoSlot[]:undefined}),basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
                 {item.status==="draft" ? <button type="button" className="admin__button admin__button--ghost" disabled={loading} onClick={()=>void deleteRecord("products",item.id,String(item.title))}>Eliminar borrador</button> :
-                 <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",allowBasePurchase:item.allowBasePurchase===true,photoSlots:item.photoSlots??[],basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
+                 <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",galleryImageUrls:item.galleryImageUrls??[],allowBasePurchase:item.allowBasePurchase===true,photoSlots:item.photoSlots??[],basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
               </div>)}</div>
             </section>
           )}

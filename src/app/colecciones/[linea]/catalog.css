@@ -3,3 +3,15 @@
 .catalog__photos{border:1px solid #e7ccc3;border-radius:8px;padding:14px;margin-top:16px}.catalog__photos h4{font:600 15px system-ui,sans-serif;margin:0 0 7px}.catalog__photos p{margin:7px 0 13px}.catalog__photo-slot{display:block;margin:12px 0;font:600 13px system-ui,sans-serif}.catalog__photo-slot small{font-weight:400;color:#76564e}.catalog__photo-slot input{display:block;margin:7px 0;max-width:100%;font:12px system-ui,sans-serif}.catalog__subtotal{border-left:2px solid #b98e81;padding-left:12px}.catalog__bottom button:disabled{opacity:.65;cursor:wait}
 
 .catalog__disc-quota{padding:8px 12px;margin:4px 0 10px;border-radius:8px;background:#f1e4db;color:#684439;font:600 12px/1.5 system-ui,sans-serif}.catalog__disc-quota strong{font-size:14px}
+
+/* Product photography: never crop covers or interiors, including portrait-format notebooks. */
+.catalog__media{width:100%;min-width:0;align-self:start}
+.catalog__image-link{display:grid;place-items:center;min-height:240px;width:100%;background:#f7ede8;border:1px solid #e5d1c8;border-radius:10px;overflow:hidden}
+.catalog__media .catalog__image{display:block;width:100%;height:auto;max-height:600px;object-fit:contain;object-position:center;margin:auto;border-radius:8px}
+.catalog__gallery{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 0}
+.catalog__gallery-button{flex:none;display:grid;place-items:center;width:72px;height:72px;padding:5px;background:#fff;border:2px solid #e4cfc6;border-radius:9px;cursor:pointer}
+.catalog__gallery-button.is-active,.catalog__gallery-button[aria-pressed="true"]{border-color:#75463b;box-shadow:0 0 0 1px #75463b}
+.catalog__gallery-button:focus-visible{outline:2px solid #75463b;outline-offset:2px}
+.catalog__gallery-button img{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.catalog__media .catalog__image-hint{font:400 11px/1.4 system-ui,sans-serif;color:#876b61;margin:8px 0 0}
+@media(max-width:760px){.catalog__image-link{min-height:180px}.catalog__media .catalog__image{height:auto;max-height:70vh}.catalog__gallery-button{width:64px;height:64px}}
