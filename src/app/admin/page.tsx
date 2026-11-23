@@ -570,7 +570,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="admin__full"><strong>Costo estimado de materiales por producto: {inclusiveRecipeCost === null ? "Faltan costos de compra" : money(inclusiveRecipeCost)} IVA incluido</strong><p>Base sin IVA: {baseRecipeCost === null ? "Sin datos completos" : money(baseRecipeCost)} · Precio de venta: {money(product.basePriceCents)} (IVA incluido cuando aplique). No se suma IVA al precio de venta y el costo no lo modifica automáticamente.</p></div>
-                <div className="admin__actions admin__full"><button className="admin__button" disabled={loading || !product.lineIds.length}>{editingProduct?"Guardar cambios":"Crear producto"}</button>{editingProduct&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingProduct(null);setProduct(newDraft());}}>Cancelar edición</button>}</div>
+                <div className="admin__actions admin__full"><button className="admin__button" disabled={loading || imageUploading || !product.lineIds.length}>{editingProduct?"Guardar cambios":"Crear producto"}</button>{editingProduct&&<button type="button" className="admin__button admin__button--ghost" onClick={()=>{setEditingProduct(null);setProduct(newDraft());}}>Cancelar edición</button>}</div>
               </form>
               <h3>Productos registrados</h3>
               <div className="admin__records">{rows.products.map(item=><div className="admin__record" key={item.id}>
