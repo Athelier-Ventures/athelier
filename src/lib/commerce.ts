@@ -162,6 +162,17 @@ export function weightedUnitCost(
 
 /** Sales prices are decided by the owner, not derived from material costs. */
 /** Existing standard notebook is eligible without a data migration. Explicit false in Firestore overrides the legacy default. */
+/** Default image sections for the pre-existing standard notebook. An explicit empty array disables this. */
+export function photoSlotsForProduct(product: {title:string;photoSlots?:PhotoSlot[]}): PhotoSlot[] {
+  if(Array.isArray(product.photoSlots))return product.photoSlots;
+  const name=product.title.trim().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();
+  if(name!=="libreta personalizada estandar")return [];
+  return [
+    {id:"standard-notebook-cover",label:"Portada",maxFiles:1},
+    {id:"standard-notebook-back",label:"Contraportada",maxFiles:1},
+    {id:"standard-notebook-inner",label:"Hojas interiores",maxFiles:8},
+  ];
+}
 export function permitsBasePurchase(product: Pick<CommercialProduct,"title"|"allowBasePurchase">): boolean {
   if(product.allowBasePurchase===true)return true;
   if(product.allowBasePurchase===false)return false;
