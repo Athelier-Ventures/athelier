@@ -53,7 +53,27 @@ export async function deletePrivatePhotos(cartItemId: string, photos: PhotoRefer
 
 export function validateCustomerPhotos(files: File[], maxCount: number): string | null {
   if (files.length > maxCount) return "Selecciona como máximo " + maxCount + " fotografía(s) para esta sección.";
-  if (files.some(file => !["image/jpeg","image/png","image/webp"].includes(file.type) || file.size === 0 || file.size > 5*1024*1024))
-    return "Cada fotografía debe ser JPG, PNG o WebP y pesar como máximo 5 MB.";
+  if (files.some(file => !["image/jpeg","image/png","image/webp"].includes(file.type) || file.size === 0 || file.size > 2*1024*1024))
+    return "Cada fotografía debe ser JPG, PNG o WebP y pesar como máximo 2 MB.";
   return null;
+}
+
+/** Retrieve a photo previously saved with its cart item; never send these bytes to analytics or public routes. */
+export async function readPrivatePhoto(cartItemId: string, photo: PhotoReference): Promise<File> {
+  const db=await openDb();
+  try{
+    return await new Promise<File>((resolve,reject)=>{
+      const tx=db.transaction(STORE,"readonly");
+      const request=tx.objectStore(STORE).get(cartItemId+":"+photo.id);
+      request.onerror=()=>reject(new Error("No fue posible leer una fotografía privada."));
+      request.onsuccess=()=>{
+        const result=request.result as {file?:unknown}|undefined;
+        if (!(result?.file instanceof Blob)) {
+          reject(new Error("Falta una fotografía en este dispositivo: "+photo.fileName+". Vuelve a agregarla al carrito."));
+          return;
+        }
+        resolve(new File([result.file],photo.fileName,{type:result.file.type}));
+      };
+    });
+  }finally{db.close();}
 }
