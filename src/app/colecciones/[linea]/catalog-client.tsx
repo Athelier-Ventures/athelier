@@ -5,7 +5,7 @@ import Link from "next/link";
 import "./catalog.css";
 import { addConfiguredProduct, type PublicProduct } from "@/lib/cart-client";
 import { useSiteLanguage } from "@/lib/language-client";
-import { configuredUnitPriceCents, type ConfiguredChoice, type CommercialProduct } from "@/lib/commerce";
+import { configuredUnitPriceCents, notebookDiscQuota, isStandardNotebookDiscOption, type ConfiguredChoice, type CommercialProduct } from "@/lib/commerce";
 import { storePrivatePhotos, validateCustomerPhotos, type PendingPhoto } from "@/lib/private-cart-photos";
 
 
@@ -20,7 +20,14 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
 
+  const discQuota = notebookDiscQuota(product,choices);
+  const discLimitMessage = en ? "Maximum 8 discs in total per notebook (pink + blue)." : "Máximo 8 discos en total por libreta (rosas + azules).";
   function toggle(groupId: string, optionId: string, selection: "single" | "multiple") {
+    const option=product.optionGroups.find(group=>group.id===groupId)?.options.find(x=>x.id===optionId);
+    const alreadySelected=choices.some(c=>c.groupId===groupId&&c.optionId===optionId);
+    if(option && isStandardNotebookDiscOption(product,option) && !alreadySelected && discQuota && discQuota.remaining<1){
+      setError(discLimitMessage);setSuccess("");return;
+    }
     setChoices(old => {
       const found = old.some(c => c.groupId === groupId && c.optionId === optionId);
       if (selection === "single") return [{ groupId, optionId, units: 1 }, ...old.filter(c => c.groupId !== groupId)];
@@ -74,6 +81,8 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
         {product.allowBasePurchase&&<button type="button" className="catalog__standard" onClick={()=>{setChoices([]);setError("");setSuccess("");}}>{en ? "Standard product — no extras" : "Producto estándar — sin adicionales"}{choices.length===0?" ✓":""}</button>}
         {product.optionGroups.map(group => <fieldset key={group.id} className="catalog__fieldset">
           <legend>{group.title}{group.required ? " *" : ""}</legend>
+          {discQuota && group.options.some(option=>isStandardNotebookDiscOption(product,option)) &&
+            <p className="catalog__disc-quota" role="status">{en ? "Discs chosen" : "Discos elegidos"}: <strong>{discQuota.selected}/{discQuota.maximum}</strong> · {en ? "pink + blue combined" : "rosas + azules combinados"}</p>}
           {group.options.map(option => {
             const active = choices.find(c=>c.groupId===group.id && c.optionId===option.id);
             return <div className="catalog__choice" key={option.id}>
@@ -83,9 +92,19 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
                   onChange={()=>toggle(group.id,option.id,group.selection)}/>
                 <span>{option.label} <small>+ {money(option.priceCents)}{option.pricingMode==="perUnit"?(en ? " / unit" : " / unidad"):""}</small></span>
               </label>
-              {active && option.pricingMode === "perUnit" && <input type="number" min="1" max="1000" value={active.units||1} aria-label={(en ? "Quantity of " : "Cantidad de ")+option.label} onChange={e=>{
-                const units=Number(e.target.value);setChoices(old=>old.map(c=>c.groupId===group.id&&c.optionId===option.id?{...c,units}:c));
-              }}/>}
+              {active && option.pricingMode === "perUnit" && <input type="number" min="1"
+                max={discQuota && isStandardNotebookDiscOption(product,option)
+                  ? Math.max(1,discQuota.maximum-(discQuota.selected-(active.units??1))) : 1000}
+                value={active.units??1} aria-label={(en ? "Quantity of " : "Cantidad de ")+option.label} onChange={e=>{
+                  const units=Number(e.target.value);
+                  const isDisc=isStandardNotebookDiscOption(product,option);
+                  const max=discQuota && isDisc ? Math.max(1,discQuota.maximum-(discQuota.selected-(active.units??1))) : 1000;
+                  if(!Number.isSafeInteger(units)||units<1||units>max){
+                    setError(isDisc ? discLimitMessage : (en ? "Enter a valid quantity." : "Ingresa una cantidad válida."));return;
+                  }
+                  setError("");setSuccess("");
+                  setChoices(old=>old.map(c=>c.groupId===group.id&&c.optionId===option.id?{...c,units}:c));
+                }}/>}
             </div>;
           })}
         </fieldset>)}
