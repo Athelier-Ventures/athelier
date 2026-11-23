@@ -85,7 +85,15 @@ export interface BillOfMaterialsLine {
   unitsConsumed: number;
   wastageRate?: number; // 0 to 1
 }
+export interface PhotoSlot {
+  id: Id;
+  label: string;
+  maxFiles: number;
+}
 export interface CommercialProduct {
+  /** Enables the base item with no optional additions without bypassing required groups for other products. */
+  allowBasePurchase?: boolean;
+  photoSlots?: PhotoSlot[];
   id: Id;
   title: string;
   basePriceCents: MoneyCents;
@@ -97,6 +105,8 @@ export interface CommercialProduct {
 }
 export interface ConfiguredChoice { groupId: Id; optionId: Id; units?: number }
 export interface CartLineSnapshot {
+  /** File bytes remain private in this browser pending a secure order submission backend. */
+  photoAttachments?: Array<{ id: string; slotId: string; slotLabel: string; fileName: string }>;
   id: Id;
   productId: Id;
   productTitle: string;
@@ -151,7 +161,16 @@ export function weightedUnitCost(
 }
 
 /** Sales prices are decided by the owner, not derived from material costs. */
+/** Existing standard notebook is eligible without a data migration. Explicit false in Firestore overrides the legacy default. */
+export function permitsBasePurchase(product: Pick<CommercialProduct,"title"|"allowBasePurchase">): boolean {
+  if(product.allowBasePurchase===true)return true;
+  if(product.allowBasePurchase===false)return false;
+  return product.title.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()==="libreta personalizada estandar";
+}
 export function configuredUnitPriceCents(product: CommercialProduct, choices: ConfiguredChoice[]): number {
+  // Only products explicitly enabled by their owner can be purchased without any additions.
+  // Selecting any option restores the normal required-group validation.
+  const baseOnly = choices.length === 0 && permitsBasePurchase(product);
   let total = validInteger(product.basePriceCents, "basePriceCents");
   const groups = new Map(product.optionGroups.map((group) => [group.id, group]));
   const selectionCount = new Map<string, number>();
@@ -171,9 +190,12 @@ export function configuredUnitPriceCents(product: CommercialProduct, choices: Co
   }
   for (const group of product.optionGroups) {
     const count = selectionCount.get(group.id) ?? 0;
-    const min = Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
+    // The owner may allow a standard base product while keeping e.g. "Tipo de hojas" required.
+    // Only explicitly named add-on groups become optional when standard purchase is enabled.
+    const addonGroup = /^(adicionales?|extras?|complementos?|secciones)$/i.test(group.title.trim());
+    const min = permitsBasePurchase(product) && addonGroup ? 0 : Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
     const max = Math.min(group.selection === "single" ? 1 : Infinity, group.maxSelections ?? Infinity);
-    if (count < min || count > max) throw new Error("Invalid option count: " + group.id);
+    if ((!baseOnly && count < min) || count > max) throw new Error("Invalid option count: " + group.id);
   }
   if (!Number.isSafeInteger(total)) throw new Error("Price overflow");
   return total;

@@ -1,6 +1,7 @@
 "use client";
 
-import type { CartLineSnapshot, ConfiguredChoice, CommercialProduct } from "@/lib/commerce";
+import type { CartLineSnapshot, ConfiguredChoice, CommercialProduct, PhotoSlot } from "@/lib/commerce";
+import type { PhotoReference } from "@/lib/private-cart-photos";
 import { configuredUnitPriceCents } from "@/lib/commerce";
 
 const STORAGE_KEY = "athelier:global-cart:v1";
@@ -9,6 +10,8 @@ export type PublicProduct = Pick<CommercialProduct, "id" | "title" | "basePriceC
   description?: string;
   imageUrl?: string;
   currency: "MXN";
+  allowBasePurchase?: boolean;
+  photoSlots?: PhotoSlot[];
 };
 export type CartItem = CartLineSnapshot & { optionLabels: string[] };
 
@@ -29,7 +32,7 @@ export function saveCart(items: CartItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event("athelier-cart-changed"));
 }
-export function addConfiguredProduct(product: PublicProduct, choices: ConfiguredChoice[], quantity: number): CartItem {
+export function addConfiguredProduct(product: PublicProduct, choices: ConfiguredChoice[], quantity: number, photoAttachments: PhotoReference[] = [], id: string = crypto.randomUUID()): CartItem {
   if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 1000) throw new Error("Cantidad no válida");
   const unitPriceCents = configuredUnitPriceCents({
     ...product,
@@ -43,8 +46,8 @@ export function addConfiguredProduct(product: PublicProduct, choices: Configured
     return option ? option.label + (choice.units && choice.units > 1 ? " × " + choice.units : "") : "";
   }).filter(Boolean);
   const item: CartItem = {
-    id: crypto.randomUUID(), productId: product.id, productTitle: product.title,
-    selections: choices, optionLabels, unitPriceCents, quantity, currency: "MXN"
+    id, productId: product.id, productTitle: product.title,
+    selections: choices, optionLabels, unitPriceCents, quantity, currency: "MXN", photoAttachments
   };
   saveCart([...loadCart(), item]);
   return item;

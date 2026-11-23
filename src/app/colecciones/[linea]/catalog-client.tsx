@@ -6,6 +6,7 @@ import "./catalog.css";
 import { addConfiguredProduct, type PublicProduct } from "@/lib/cart-client";
 import { useSiteLanguage } from "@/lib/language-client";
 import { configuredUnitPriceCents, type ConfiguredChoice, type CommercialProduct } from "@/lib/commerce";
+import { storePrivatePhotos, validateCustomerPhotos, type PendingPhoto } from "@/lib/private-cart-photos";
 
 
 function ProductConfigurator({ product }: { product: PublicProduct }) {
@@ -15,6 +16,8 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
   const [choices, setChoices] = useState<ConfiguredChoice[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [success, setSuccess] = useState("");
+  const [photoFiles, setPhotoFiles] = useState<Record<string, File[]>>({});
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
 
   function toggle(groupId: string, optionId: string, selection: "single" | "multiple") {
@@ -34,10 +37,31 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
       return sum + (option?.priceCents ?? 0) * (option?.pricingMode === "perUnit" ? c.units || 1 : 1);
     }, 0); }
   })();
-  function add() {
-    setError("");setSuccess("");
-    try { addConfiguredProduct(product, choices, quantity); setSuccess(en ? "Added to your cart." : "Añadido al carrito compartido."); }
-    catch (e) { setError(e instanceof Error ? e.message : (en ? "Please select the required options" : "Selecciona las opciones obligatorias")); }
+  const subtotal = price * (Number.isSafeInteger(quantity) && quantity > 0 ? quantity : 0);
+  async function add() {
+    if (adding) return;
+    setError(""); setSuccess(""); setAdding(true);
+    try {
+      if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 1000) throw new Error(en ? "Invalid product quantity." : "Cantidad de productos no válida.");
+      const photos: PendingPhoto[] = [];
+      for (const slot of product.photoSlots ?? []) {
+        const files = photoFiles[slot.id] ?? [];
+        const invalid = validateCustomerPhotos(files, slot.maxFiles);
+        if (invalid) throw new Error(invalid);
+        for (const file of files) photos.push({id:crypto.randomUUID(),slotId:slot.id,slotLabel:slot.label,fileName:file.name,file});
+      }
+      if (photos.length > 10) throw new Error(en ? "Maximum 10 photos per configured product." : "Máximo 10 fotografías por producto configurado.");
+      // Validate the selected options before persisting any private images.
+      configuredUnitPriceCents({ ...product, baseMaterials: [], status: "published" } as CommercialProduct, choices);
+      const id = crypto.randomUUID();
+      const attachments = await storePrivatePhotos(id, photos);
+      addConfiguredProduct(product, choices, quantity, attachments, id);
+      setSuccess(en ? "Added to your cart." : "Añadido al carrito compartido.");
+      setPhotoFiles({});
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      setError(message.startsWith("Invalid option count") ? (en ? "Choose the required options, or ask the owner to enable standard purchase." : "Selecciona las opciones obligatorias o solicita habilitar la compra estándar.") : message || (en ? "Could not add item." : "No se pudo agregar el producto."));
+    } finally {setAdding(false);}
   }
 
   return (
@@ -47,6 +71,7 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
         <h3>{product.title}</h3>
         {product.description && <p>{product.description}</p>}
         <div className="catalog__price">{en ? "From" : "Desde"} {money(product.basePriceCents)} <small>{en ? "VAT included where applicable" : "IVA incluido cuando aplique"}</small></div>
+        {product.allowBasePurchase&&<button type="button" className="catalog__standard" onClick={()=>{setChoices([]);setError("");setSuccess("");}}>{en ? "Standard product — no extras" : "Producto estándar — sin adicionales"}{choices.length===0?" ✓":""}</button>}
         {product.optionGroups.map(group => <fieldset key={group.id} className="catalog__fieldset">
           <legend>{group.title}{group.required ? " *" : ""}</legend>
           {group.options.map(option => {
@@ -64,10 +89,26 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
             </div>;
           })}
         </fieldset>)}
+        {(product.photoSlots?.length ?? 0)>0 && <div className="catalog__photos">
+          <h4>{en ? "Your photos for personalization" : "Tus fotografías para personalización"}</h4>
+          <p>{en ? "Photos stay private on this device until you send the customization request from the cart. This is not a payment." : "Las fotografías permanecen privadas en este dispositivo hasta que envíes la solicitud desde el carrito. No es un pago."}</p>
+          {product.photoSlots?.map(slot=><label key={slot.id} className="catalog__photo-slot">
+            {slot.label} <small>({en ? "maximum" : "máximo"} {slot.maxFiles})</small>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple={slot.maxFiles>1}
+              onChange={e=>{
+                const files=Array.from(e.target.files??[]);
+                const invalid=validateCustomerPhotos(files,slot.maxFiles);
+                if(invalid){setError(invalid);e.target.value="";return;}
+                setError("");setPhotoFiles(old=>({...old,[slot.id]:files}));
+              }}/>
+            {(photoFiles[slot.id]?.length??0)>0&&<small>{photoFiles[slot.id].map(file=>file.name).join(", ")}</small>}
+          </label>)}
+        </div>}
         <div className="catalog__bottom">
           <label>{en ? "Quantity" : "Cantidad"}<input type="number" min="1" max="1000" value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/></label>
-          <div><span>{en ? "Configured price" : "Precio configurado"}</span><strong>{money(price)} / {en ? "item" : "pieza"}</strong></div>
-          <button type="button" onClick={add}>{en ? "Add to cart" : "Agregar al carrito"}</button>
+          <div><span>{en ? "Configured unit price" : "Precio unitario configurado"}</span><strong>{money(price)} / {en ? "item" : "pieza"}</strong></div>
+          <div className="catalog__subtotal"><span>{en ? "Subtotal" : "Subtotal"} ({quantity} {en ? "items" : "piezas"})</span><strong>{money(subtotal)}</strong></div>
+          <button type="button" disabled={adding} onClick={()=>void add()}>{adding ? (en ? "Saving..." : "Guardando…") : (en ? "Add to cart" : "Agregar al carrito")}</button>
         </div>
         {success && <p className="catalog__success" role="status">{success} <Link href="/carrito">{en ? "View cart" : "Ver carrito"}</Link></p>}
         {error && <p className="catalog__error" role="alert">{error}</p>}

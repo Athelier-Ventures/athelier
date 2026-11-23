@@ -57,3 +57,5 @@
   .admin__heading { align-items:start; }
 }
 @media (prefers-reduced-motion:reduce) { .admin * { scroll-behavior:auto !important; } }
+
+.admin__request{background:#fffaf7;border:1px solid #dcc2b9;padding:20px;margin:20px 0;border-radius:12px;overflow-wrap:anywhere}.admin__request h3{margin:0 0 14px;font-size:24px}.admin__request small{font:400 12px system-ui,sans-serif;color:#795d55}.admin__request p,.admin__request li{font-size:13px;line-height:1.7}.admin__request-photos{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.admin__request-photos button{max-width:100%;overflow-wrap:anywhere}
