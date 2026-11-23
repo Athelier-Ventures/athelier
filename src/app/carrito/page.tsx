@@ -46,7 +46,7 @@ export default function CartPage() {
         {items.map(item=><article key={item.id} className="cart__item">
           <div><h2>{item.productTitle}</h2>
             {item.optionLabels.length>0&&<ul>{item.optionLabels.map((label,i)=><li key={i}>{label}</li>)}</ul>}
-            {(item.photoAttachments?.length??0)>0&&<p>{en ? "Private photos stored on this device" : "Fotografías privadas guardadas en este dispositivo"}: {item.photoAttachments?.map(photo=>photo.slotLabel+" — "+photo.fileName).join("; ")}. {en ? "Not sent to the studio." : "No enviadas al taller."}</p>}
+            {(item.photoAttachments?.length??0)>0&&<p>{en ? "Private photos stored on this device" : "Fotografías privadas guardadas en este dispositivo"}: {item.photoAttachments?.map(photo=>photo.slotLabel+" — "+photo.fileName).join("; ")}. {en ? "They will be sent when you submit your request." : "Se enviarán al taller al completar la solicitud."}</p>}
             <small>{en ? "Quantity" : "Cantidad"}: {item.quantity}</small></div>
           <div><strong>{money(item.unitPriceCents*item.quantity)}</strong>
             <button type="button" onClick={()=>remove(item.id)}>{en ? "Remove" : "Quitar"}</button></div>
