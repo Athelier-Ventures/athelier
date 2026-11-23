@@ -165,7 +165,7 @@ export function weightedUnitCost(
 /** Default image sections for the pre-existing standard notebook. An explicit empty array disables this. */
 export function photoSlotsForProduct(product: {title:string;photoSlots?:PhotoSlot[]}): PhotoSlot[] {
   if(Array.isArray(product.photoSlots))return product.photoSlots;
-  const name=product.title.trim().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();
+  const name=product.title.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   if(name!=="libreta personalizada estandar")return [];
   return [
     {id:"standard-notebook-cover",label:"Portada",maxFiles:1},
