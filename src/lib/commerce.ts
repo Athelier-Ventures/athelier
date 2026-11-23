@@ -85,7 +85,15 @@ export interface BillOfMaterialsLine {
   unitsConsumed: number;
   wastageRate?: number; // 0 to 1
 }
+export interface PhotoSlot {
+  id: Id;
+  label: string;
+  maxFiles: number;
+}
 export interface CommercialProduct {
+  /** Enables the base item with no optional additions without bypassing required groups for other products. */
+  allowBasePurchase?: boolean;
+  photoSlots?: PhotoSlot[];
   id: Id;
   title: string;
   basePriceCents: MoneyCents;
@@ -97,6 +105,8 @@ export interface CommercialProduct {
 }
 export interface ConfiguredChoice { groupId: Id; optionId: Id; units?: number }
 export interface CartLineSnapshot {
+  /** File bytes remain private in this browser pending a secure order submission backend. */
+  photoAttachments?: Array<{ id: string; slotId: string; slotLabel: string; fileName: string }>;
   id: Id;
   productId: Id;
   productTitle: string;
@@ -152,6 +162,9 @@ export function weightedUnitCost(
 
 /** Sales prices are decided by the owner, not derived from material costs. */
 export function configuredUnitPriceCents(product: CommercialProduct, choices: ConfiguredChoice[]): number {
+  // Only products explicitly enabled by their owner can be purchased without any additions.
+  // Selecting any option restores the normal required-group validation.
+  const baseOnly = choices.length === 0 && product.allowBasePurchase === true;
   let total = validInteger(product.basePriceCents, "basePriceCents");
   const groups = new Map(product.optionGroups.map((group) => [group.id, group]));
   const selectionCount = new Map<string, number>();
@@ -173,7 +186,7 @@ export function configuredUnitPriceCents(product: CommercialProduct, choices: Co
     const count = selectionCount.get(group.id) ?? 0;
     const min = Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
     const max = Math.min(group.selection === "single" ? 1 : Infinity, group.maxSelections ?? Infinity);
-    if (count < min || count > max) throw new Error("Invalid option count: " + group.id);
+    if ((!baseOnly && count < min) || count > max) throw new Error("Invalid option count: " + group.id);
   }
   if (!Number.isSafeInteger(total)) throw new Error("Price overflow");
   return total;
