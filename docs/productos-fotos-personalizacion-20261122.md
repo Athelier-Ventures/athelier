@@ -37,3 +37,5 @@ Ejemplo: libreta base $280 + siete discos rosa de $14 = $378/pieza; cantidad 2 =
 **Estado conocido:** compilación automatizada Vercel en la rama; las pruebas end-to-end que requieran Storage/Firebase y las reglas del bucket NO se han realizado ni deben declararse completas. No copiar ajustes de producción manualmente desde Preview.
 
 **Preview sin Firebase:** se permite exclusivamente consulta GET del catálogo público de `athelier.mx` para visualizar el configurador; no se comparten secretos, no se habilita acceso de admin en Preview y no se proxifican escrituras.
+
+**Disponibilidad para clientes:** el carrito consulta `GET /api/customer-requests` y solo habilita el botón «Enviar solicitud al taller» cuando Firebase Storage responde que el bucket está disponible. Si Storage está ausente, la operación queda claramente desactivada y no se muestra confirmación falsa de recepción.
