@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { loadCart, saveCart, type CartItem } from "@/lib/cart-client";
 import { useSiteLanguage } from "@/lib/language-client";
 import { inclusiveTaxBreakdown } from "@/lib/iva";
+import { deletePrivatePhotos } from "@/lib/private-cart-photos";
 
 export default function CartPage() {
   const { language } = useSiteLanguage();
@@ -13,7 +14,7 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   useEffect(() => { setItems(loadCart()); }, []);
   const total = items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
-  function remove(id: string) { const next = items.filter(item=>item.id!==id); setItems(next); saveCart(next); }
+  function remove(id: string) { const removed=items.find(item=>item.id===id); const next = items.filter(item=>item.id!==id); setItems(next); saveCart(next); if(removed) void deletePrivatePhotos(id,removed.photoAttachments??[]).catch(()=>{}); }
   // Indicative only; fiscal treatment of each product is determined at checkout.
   const illustrativeVat = inclusiveTaxBreakdown(total).taxCents;
   return <main className="cart">
@@ -31,6 +32,7 @@ export default function CartPage() {
         {items.map(item=><article key={item.id} className="cart__item">
           <div><h2>{item.productTitle}</h2>
             {item.optionLabels.length>0&&<ul>{item.optionLabels.map((label,i)=><li key={i}>{label}</li>)}</ul>}
+            {(item.photoAttachments?.length??0)>0&&<p>{en ? "Private photos stored on this device" : "Fotografías privadas guardadas en este dispositivo"}: {item.photoAttachments?.map(photo=>photo.slotLabel+" — "+photo.fileName).join("; ")}. {en ? "Not sent to the studio." : "No enviadas al taller."}</p>}
             <small>{en ? "Quantity" : "Cantidad"}: {item.quantity}</small></div>
           <div><strong>{money(item.unitPriceCents*item.quantity)}</strong>
             <button type="button" onClick={()=>remove(item.id)}>{en ? "Remove" : "Quitar"}</button></div>
