@@ -12,7 +12,7 @@ import "./admin.css";
 type Resource = "suppliers" | "units" | "materials" | "presentations" | "purchases" | "products";
 type CustomerRequest = {
   id:string;name:string;email:string;phone:string;note:string;createdAt:string;
-  status:string;totalCents:number;
+  status:string;totalCents:number;reviewedAt?:string;reviewedBy?:string;
   items:Array<{id:string;productTitle:string;quantity:number;unitPriceCents:number;selections:Array<{groupId:string;optionId:string;units?:number}>}>;
   photos:Array<{id:string;itemId:string;slotLabel:string;fileName:string;uploaded:boolean}>;
 };
@@ -62,6 +62,7 @@ export default function AdminPage() {
   const [newGroupTitle, setNewGroupTitle] = useState("");
   const [customerRequests,setCustomerRequests]=useState<CustomerRequest[]>([]);
   const [requestsLoading,setRequestsLoading]=useState(false);
+  const [reviewingId,setReviewingId]=useState<string|null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [newBillId, setNewBillId] = useState("");
   const [newBillUnits, setNewBillUnits] = useState("1");
@@ -105,6 +106,7 @@ export default function AdminPage() {
           await request("/api/admin/session", "GET", undefined, account);
           setAuthorized(true);
           await refresh(account);
+          await loadRequests(account, true);
         } catch (e) { setError(e instanceof Error ? e.message : "No autorizado"); }
       }
       setAuthReady(true);
@@ -118,14 +120,35 @@ export default function AdminPage() {
     try { await signInWithPopup(browserAuth(), googleProvider()); }
     catch (e) { setError(e instanceof Error ? e.message : "Error al iniciar sesión"); }
   }
-  async function loadRequests(currentUser=user) {
+  async function loadRequests(currentUser=user, silent=false) {
     if(!currentUser)return;
-    setRequestsLoading(true);setError("");
+    if(!silent){setRequestsLoading(true);setError("");}
     try {
       const result=await request<{items:CustomerRequest[]}>("/api/admin/customer-requests","GET",undefined,currentUser);
       setCustomerRequests(result.items);
-    } catch(e){setError(e instanceof Error?e.message:"No se pudieron consultar las solicitudes.");}
-    finally{setRequestsLoading(false);}
+    } catch(e){
+      if(!silent)setError(e instanceof Error?e.message:"No se pudieron consultar las solicitudes.");
+    } finally {if(!silent)setRequestsLoading(false);}
+  }
+  useEffect(()=>{
+    if(!authorized||!user)return;
+    const poll=()=>{if(document.visibilityState==="visible")void loadRequests(user,true);};
+    const timer=window.setInterval(poll,60_000);
+    document.addEventListener("visibilitychange",poll);
+    return ()=>{window.clearInterval(timer);document.removeEventListener("visibilitychange",poll);};
+    // The authenticated user and authorisation state are the only lifecycle keys.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[authorized,user]);
+  async function markRequestReviewed(id:string) {
+    if(!user||reviewingId)return;
+    setReviewingId(id);setError("");setNotice("");
+    try {
+      const result=await request<{reviewedAt:string}>("/api/admin/customer-requests/"+encodeURIComponent(id)+"/review","PATCH",{},user);
+      setCustomerRequests(previous=>previous.map(item=>item.id===id?{...item,reviewedAt:result.reviewedAt}:item));
+      setNotice("Solicitud marcada como revisada.");
+    } catch(e) {
+      setError(e instanceof Error?e.message:"No se pudo actualizar la solicitud.");
+    } finally {setReviewingId(null);}
   }
   async function downloadRequestPhoto(requestId:string,photoId:string) {
     if(!user)return;
@@ -143,7 +166,7 @@ export default function AdminPage() {
     }catch(e){setError(e instanceof Error?e.message:"Error al descargar fotografía.");}
   }
   async function logout() {
-    await signOut(browserAuth()); setUser(null); setAuthorized(false); setRows({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
+    await signOut(browserAuth()); setUser(null); setAuthorized(false); setCustomerRequests([]); setRows({ suppliers: [], units: [], materials: [], presentations: [], purchases: [], products: [] });
   }
   async function save(resource: Resource, data: unknown, id?: string) {
     setError(""); setNotice(""); setLoading(true);
@@ -223,6 +246,7 @@ export default function AdminPage() {
     setProduct(p => ({ ...p, optionGroups: p.optionGroups.map((g, i) => i === index ? update(g) : g) }));
   }
 
+  const unreadRequestCount=customerRequests.filter(item=>item.status==="received"&&!item.reviewedAt).length;
   const purchases = rows.purchases as unknown as Purchase[];
   const materialCosts = Object.fromEntries(rows.materials.map(material => [material.id, weightedUnitCost(purchases, material.id, {
     from: costFrom ? costFrom + "T00:00:00.000Z" : undefined,
@@ -243,6 +267,15 @@ export default function AdminPage() {
       <header className="admin__header">
         <Link href="/" className="admin__logo">ATHELIER</Link>
         <span>Administración · México · MXN</span>
+        {user&&authorized&&<div className="admin__notifications">
+          <button type="button" className="admin__bell" aria-label={"Notificaciones: "+unreadRequestCount+" solicitudes pendientes de revisar"}
+            title={unreadRequestCount ? unreadRequestCount+" solicitudes nuevas" : "Sin solicitudes nuevas"}
+            onClick={()=>{setTab("requests");setError("");setNotice("");void loadRequests();}}>
+            <span className="admin__bell-icon" aria-hidden="true">🔔</span>
+            {unreadRequestCount>0&&<span className="admin__bell-count" aria-hidden="true">{unreadRequestCount>=100?"99+":unreadRequestCount}</span>}
+            <span className="admin__bell-label">Solicitudes</span>
+          </button>
+        </div>}
         {user && <button className="admin__button admin__button--ghost" onClick={logout} type="button">Cerrar sesión</button>}
       </header>
       {!authReady ? <p className="admin__status">Comprobando acceso…</p> : !user ? (
@@ -268,7 +301,7 @@ export default function AdminPage() {
           </div>
           <nav className="admin__tabs" aria-label="Administración">
             {resources.map(r => <button key={r} type="button" className={r===tab ? "is-selected" : ""} onClick={() => {setTab(r);setError("");setNotice("");}}>{tabs[r]} <span>{rows[r].length}</span></button>)}
-            <button type="button" className={tab==="requests"?"is-selected":""} onClick={()=>{setTab("requests");setNotice("");void loadRequests();}}>Solicitudes</button>
+            <button type="button" className={tab==="requests"?"is-selected":""} onClick={()=>{setTab("requests");setNotice("");void loadRequests();}}>Solicitudes{unreadRequestCount>0&&<span aria-label={unreadRequestCount+" nuevas"}>{unreadRequestCount>=100?"99+":unreadRequestCount}</span>}</button>
           </nav>
           {error && <p className="admin__error" role="alert">{error}</p>}
           {notice && <p className="admin__notice" role="status">{notice}</p>}
@@ -506,14 +539,24 @@ export default function AdminPage() {
             <h2>Solicitudes de personalización</h2>
             <p>Solicitudes y fotografías recibidas en privado. No son órdenes cobradas; contacta al cliente para confirmar disponibilidad y pago.</p>
             <button type="button" className="admin__button admin__button--ghost" disabled={requestsLoading} onClick={()=>void loadRequests()}>{requestsLoading?"Actualizando…":"Actualizar solicitudes"}</button>
+            <p className="admin__request-summary" role="status">{unreadRequestCount>0?unreadRequestCount+" solicitud(es) nuevas por revisar.":"Sin solicitudes nuevas pendientes de revisar."}</p>
             {customerRequests.length===0&&!requestsLoading&&<p>No hay solicitudes recibidas.</p>}
             {customerRequests.map(item=><article className="admin__request" key={item.id}>
-              <h3>{item.name} <small>· {new Date(item.createdAt).toLocaleString("es-MX")}</small></h3>
+              <div className="admin__request-title">
+                <h3>{item.name} <small>· {new Date(item.createdAt).toLocaleString("es-MX")}</small></h3>
+                {item.reviewedAt?
+                  <span className="admin__request-reviewed">✓ Revisada</span>:
+                  <span className="admin__request-new">Nueva</span>}
+              </div>
               <p><strong>Referencia:</strong> {item.id}</p>
               <p><strong>Contacto:</strong> {item.email||"Sin correo"} · {item.phone||"Sin teléfono"}</p>
               {item.note&&<p><strong>Indicaciones:</strong> {item.note}</p>}
               <ul>{item.items.map(line=><li key={line.id}>{line.productTitle} × {line.quantity} — {money(line.unitPriceCents)} por pieza</li>)}</ul>
               <p><strong>Total de referencia:</strong> {money(item.totalCents)} (sin pago recibido).</p>
+              {!item.reviewedAt&&<button type="button" className="admin__button admin__button--ghost"
+                disabled={reviewingId!==null} onClick={()=>void markRequestReviewed(item.id)}>
+                {reviewingId===item.id?"Guardando…":"Marcar como revisada"}
+              </button>}
               {item.photos.length>0&&<div><strong>Fotografías privadas:</strong>
                 <div className="admin__request-photos">{item.photos.filter(photo=>photo.uploaded).map(photo=>
                   <button type="button" className="admin__button admin__button--ghost" key={photo.id} onClick={()=>void downloadRequestPhoto(item.id,photo.id)}>

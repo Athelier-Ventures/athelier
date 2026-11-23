@@ -16,7 +16,19 @@ export async function POST(request:Request,{params}:Params){
       const photos=data?.photos as RequestAttachment[];
       if(photos.some(photo=>!photo.uploaded))
         throw new AdminApiError(409,"PHOTOS_PENDING","Aún faltan fotografías por adjuntar.");
-      tx.update(ref,{status:"received",updatedAt:new Date().toISOString(),receivedAt:new Date().toISOString(),uploadTokenHash:null});
+      const now = new Date().toISOString();
+      tx.update(ref,{status:"received",updatedAt:now,receivedAt:now,uploadTokenHash:null});
+      // Durable outbox marker, committed atomically with receipt. No provider calls here.
+      // This prevents false alerts for drafts or incomplete photo uploads.
+      tx.set(db.collection("customer_request_notification_outbox").doc(id), {
+        type:"customer_request.received",requestId:id,createdAt:now,
+        channels:{
+          ownerEmail:"awaiting_provider_configuration",
+          customerEmail:data?.email ? "awaiting_provider_configuration" : "not_applicable",
+          ownerWhatsApp:"awaiting_provider_configuration",
+        },
+        deliveryEnabled:false,
+      });
     });
     return NextResponse.json({received:true,reference:id},{headers:{"Cache-Control":"no-store"}});
   }catch(e){return apiError(e);}
