@@ -19,6 +19,9 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
   const [photoFiles, setPhotoFiles] = useState<Record<string, File[]>>({});
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  const [activeImage, setActiveImage] = useState(0);
+  const gallery=[...new Set([product.imageUrl,...(product.galleryImageUrls??[])].filter((x):x is string=>Boolean(x)))];
+  const selectedImage=gallery[activeImage]??gallery[0];
 
   const discQuota = notebookDiscQuota(product,choices);
   const discLimitMessage = en ? "Maximum 8 discs in total per notebook (pink + blue)." : "Máximo 8 discos en total por libreta (rosas + azules).";
@@ -73,7 +76,22 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
 
   return (
     <article className="catalog__product">
-      {product.imageUrl ? <img className="catalog__image" src={product.imageUrl} alt={product.title} loading="lazy" /> : <div className="catalog__placeholder" aria-hidden="true">ATHELIER</div>}
+      <div className="catalog__media">
+        {selectedImage ? <>
+          <a href={selectedImage} className="catalog__image-link" target="_blank" rel="noopener noreferrer"
+            aria-label={en?"View full image of "+product.title:"Ver imagen completa de "+product.title}>
+            <img className="catalog__image" src={selectedImage} alt={product.title+" — "+(activeImage+1)+" / "+gallery.length} loading="lazy" />
+          </a>
+          {gallery.length>1&&<div className="catalog__gallery" aria-label={en?"Product image gallery":"Galería de fotografías del producto"}>
+            {gallery.map((url,i)=><button type="button" key={url} aria-label={(en?"View photo ":"Ver fotografía ")+(i+1)}
+              aria-pressed={activeImage===i} className={"catalog__gallery-button"+(activeImage===i?" is-active":"")}
+              onClick={()=>setActiveImage(i)}>
+              <img src={url} alt="" loading="lazy"/>
+            </button>)}
+          </div>}
+          <p className="catalog__image-hint">{en?"Tap the photo to view it full size.":"Toca la fotografía para verla completa."}</p>
+        </> : <div className="catalog__placeholder" aria-hidden="true">ATHELIER</div>}
+      </div>
       <div className="catalog__details">
         <h3>{product.title}</h3>
         {product.description && <p>{product.description}</p>}
