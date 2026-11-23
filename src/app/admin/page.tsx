@@ -164,8 +164,8 @@ export default function AdminPage() {
     if (!user) { setError("Primero inicia sesión"); return; }
     setError(""); setNotice(""); setImageUploading(true);
     try {
-      if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type))
-        throw new Error("Selecciona una imagen JPG, PNG o WebP de hasta 5 MB.");
+      if (file.size > 3 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+        throw new Error("Selecciona una imagen JPG, PNG o WebP de hasta 3 MB.");
       const form = new FormData();
       form.append("image", file);
       const token = await user.getIdToken();
@@ -433,7 +433,7 @@ export default function AdminPage() {
                 <label>Nombre del producto<input required maxLength={180} value={product.title} onChange={e=>setProduct(p=>({...p,title:e.target.value}))} placeholder="Ej. Libreta personalizada"/></label>
                 <label>Descripción<textarea maxLength={1500} rows={3} value={product.description} onChange={e=>setProduct(p=>({...p,description:e.target.value}))}/></label>
                 <label>URL pública de imagen (opcional)<input type="text" placeholder="https://..." value={product.imageUrl} onChange={e=>setProduct(p=>({...p,imageUrl:e.target.value}))}/></label>
-                <label>Adjuntar imagen principal (JPG, PNG o WebP; máximo 5 MB)
+                <label>Adjuntar imagen principal (JPG, PNG o WebP; máximo 3 MB)
                   <input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageUploading || loading} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadProductImage(file);e.target.value="";}}/>
                 </label>
                 {imageUploading&&<p className="admin__full" role="status">Subiendo fotografía…</p>}
@@ -441,7 +441,7 @@ export default function AdminPage() {
                 <label className="admin__check"><input type="checkbox" checked={product.allowBasePurchase} onChange={e=>setProduct(p=>({...p,allowBasePurchase:e.target.checked}))}/>Permitir comprar el producto estándar sin adicionales, incluso si algún grupo está marcado como obligatorio.</label>
                 <div className="admin__full">
                   <h3>Fotografías que puede aportar el cliente</h3>
-                  <p>Selecciona las áreas del producto para las que se aceptan imágenes. Los archivos privados permanecerán en el dispositivo del cliente hasta que exista un envío seguro de pedidos.</p>
+                  <p>Selecciona las áreas del producto para las que se aceptan imágenes. Los archivos permanecen en el dispositivo del cliente hasta que envíe una solicitud privada al taller desde su carrito.</p>
                   {product.photoSlots.map((slot,i)=><div key={slot.id} className="admin__option">
                     <label>Área / sección<input maxLength={100} value={slot.label} onChange={e=>setProduct(p=>({...p,photoSlots:p.photoSlots.map((x,j)=>j===i?{...x,label:e.target.value}:x)}))}/></label>
                     <label>Máximo de fotos<input type="number" min="1" max="10" value={slot.maxFiles} onChange={e=>setProduct(p=>({...p,photoSlots:p.photoSlots.map((x,j)=>j===i?{...x,maxFiles:Number(e.target.value)}:x)}))}/></label>
