@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    if (process.env.VERCEL_ENV === "preview" && process.env.ATHELIER_PREVIEW_UPLOADS_ENABLED !== "true") {
+      throw new AdminApiError(503, "PREVIEW_STORAGE_DISABLED", "Para probar uploads en Preview, configura primero un Storage aislado y habilita ATHELIER_PREVIEW_UPLOADS_ENABLED.");
+    }
     const { uid } = await adminSession(request);
     const form = await request.formData();
     const photo = form.get("image");
