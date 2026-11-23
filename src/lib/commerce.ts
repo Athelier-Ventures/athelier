@@ -184,7 +184,10 @@ export function configuredUnitPriceCents(product: CommercialProduct, choices: Co
   }
   for (const group of product.optionGroups) {
     const count = selectionCount.get(group.id) ?? 0;
-    const min = Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
+    // The owner may allow a standard base product while keeping e.g. "Tipo de hojas" required.
+    // Only explicitly named add-on groups become optional when standard purchase is enabled.
+    const addonGroup = /^(adicionales?|extras?|complementos?|secciones)$/i.test(group.title.trim());
+    const min = product.allowBasePurchase && addonGroup ? 0 : Math.max(group.required ? 1 : 0, group.minSelections ?? 0);
     const max = Math.min(group.selection === "single" ? 1 : Infinity, group.maxSelections ?? Infinity);
     if ((!baseOnly && count < min) || count > max) throw new Error("Invalid option count: " + group.id);
   }
