@@ -12,7 +12,7 @@
 
 ### Comportamiento base/extra
 
-Los productos existentes deben habilitar `allowBasePurchase` en el Administrador. Con la opción activa, permite comprar sin extras incluso si no se seleccionó ninguna alternativa; al elegir «Tipo de hojas» u otra configuración requerida no exenta, los grupos «Adicionales», «Secciones», «Extras» y «Complementos» pasan a ser opcionales sin afectar los grupos obligatorios restantes.
+La **Libreta Personalizada Estándar** existente se habilita por defecto sin migrar Firestore, siempre que no exista un `allowBasePurchase: false` explícito; todos los demás productos requieren habilitar `allowBasePurchase` desde el Administrador. Con la opción activa, permite comprar sin extras incluso si no se seleccionó ninguna alternativa; al elegir «Tipo de hojas» u otra configuración requerida no exenta, los grupos «Adicionales», «Secciones», «Extras» y «Complementos» pasan a ser opcionales sin afectar los grupos obligatorios restantes.
 
 Ejemplo: libreta base $280 + siete discos rosa de $14 = $378/pieza; cantidad 2 = subtotal $756.
 
@@ -35,3 +35,5 @@ Ejemplo: libreta base $280 + siete discos rosa de $14 = $378/pieza; cantidad 2 =
 5. Verificar la identidad y atribución de la autorización de merge. GitHub `main` se observó previamente sin protección activa.
 
 **Estado conocido:** compilación automatizada Vercel en la rama; las pruebas end-to-end que requieran Storage/Firebase y las reglas del bucket NO se han realizado ni deben declararse completas. No copiar ajustes de producción manualmente desde Preview.
+
+**Preview sin Firebase:** se permite exclusivamente consulta GET del catálogo público de `athelier.mx` para visualizar el configurador; no se comparten secretos, no se habilita acceso de admin en Preview y no se proxifican escrituras.
