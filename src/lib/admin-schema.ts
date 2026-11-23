@@ -37,7 +37,9 @@ export const inputSchemas = {
   }).strict(),
   products: z.object({
     title: required, description: z.string().max(1500).default(""),
-    imageUrl: z.union([z.url({ protocol: /^https$/ }), z.literal("")]).default(""),
+    imageUrl: z.union([z.url({ protocol: /^https$/ }), z.string().regex(/^\/api\/catalog\/images\/[0-9a-f-]{36}$/i), z.literal("")]).default(""),
+    allowBasePurchase: z.boolean().default(false),
+    photoSlots: z.array(z.object({ id, label: required, maxFiles: z.number().int().min(1).max(10) }).strict()).max(10).default([]),
     basePriceCents: money,
     currency: z.literal("MXN"),
     lineIds: lines,
