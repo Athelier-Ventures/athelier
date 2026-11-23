@@ -178,6 +178,34 @@ export function permitsBasePurchase(product: Pick<CommercialProduct,"title"|"all
   if(product.allowBasePurchase===false)return false;
   return product.title.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()==="libreta personalizada estandar";
 }
+/** 8 physical discs maximum per standard notebook, shared between pink and blue. */
+export const STANDARD_NOTEBOOK_DISC_LIMIT = 8;
+
+function normalizeNotebookText(text: string): string {
+  return text.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+}
+export function isStandardNotebookDiscOption(
+  product: Pick<CommercialProduct,"title">,
+  option: Pick<ProductOption,"label"|"pricingMode">
+): boolean {
+  return normalizeNotebookText(product.title)==="libreta personalizada estandar"
+    && option.pricingMode==="perUnit"
+    && /^discos?\s+(?:color\s+)?(?:rosa|azul)$/.test(normalizeNotebookText(option.label));
+}
+export function notebookDiscQuota(
+  product: Pick<CommercialProduct,"title"|"optionGroups">,
+  choices: ConfiguredChoice[]
+): { selected:number; remaining:number; maximum:number } | null {
+  const discs=product.optionGroups.flatMap(group=>group.options
+    .filter(option=>isStandardNotebookDiscOption(product,option))
+    .map(option=>group.id+":"+option.id));
+  if(!discs.length)return null;
+  const discIds=new Set(discs);
+  const selected=choices.reduce((total,choice)=>
+    total+(discIds.has(choice.groupId+":"+choice.optionId)?(choice.units??1):0),0);
+  return {selected,remaining:STANDARD_NOTEBOOK_DISC_LIMIT-selected,maximum:STANDARD_NOTEBOOK_DISC_LIMIT};
+}
+
 export function configuredUnitPriceCents(product: CommercialProduct, choices: ConfiguredChoice[]): number {
   // Only products explicitly enabled by their owner can be purchased without any additions.
   // Selecting any option restores the normal required-group validation.
@@ -197,8 +225,13 @@ export function configuredUnitPriceCents(product: CommercialProduct, choices: Co
     const count = (selectionCount.get(group.id) ?? 0) + 1;
     selectionCount.set(group.id, count);
     const units = option.pricingMode === "perUnit" ? validInteger(choice.units ?? 1, "units") : 1;
+    if(isStandardNotebookDiscOption(product,option) && (units<1 || units>STANDARD_NOTEBOOK_DISC_LIMIT))
+      throw new Error("DISC_LIMIT_EXCEEDED: each disc colour must contain between 1 and 8 discs");
     total += validInteger(option.priceCents, "priceCents") * units;
   }
+  const discQuota=notebookDiscQuota(product,choices);
+  if(discQuota && (!Number.isSafeInteger(discQuota.selected) || discQuota.selected>discQuota.maximum))
+    throw new Error("DISC_LIMIT_EXCEEDED: maximum 8 discs per notebook");
   for (const group of product.optionGroups) {
     const count = selectionCount.get(group.id) ?? 0;
     // The owner may allow a standard base product while keeping e.g. "Tipo de hojas" required.

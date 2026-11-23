@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { reviseConfiguredCartItem, type CartItem, type PublicProduct } from "@/lib/cart-client";
 import { deletePrivatePhotos, storePrivatePhotos, validateCustomerPhotos, type PendingPhoto, type PhotoReference } from "@/lib/private-cart-photos";
-import type { ConfiguredChoice } from "@/lib/commerce";
+import { notebookDiscQuota, isStandardNotebookDiscOption, type ConfiguredChoice } from "@/lib/commerce";
 
 type Props = {
   item: CartItem;
@@ -56,7 +56,14 @@ export default function CartItemEditor({item, en, onSave, onCancel}: Props) {
     return()=>{active=false;};
   },[item.productId,en,item.selections]);
 
+  const discQuota=product ? notebookDiscQuota(product,choices) : null;
+  const discLimitMessage=en ? "Maximum 8 discs in total per notebook (pink + blue)." : "Máximo 8 discos en total por libreta (rosas + azules).";
   function toggle(groupId:string, optionId:string, selection:"single"|"multiple"){
+    const option=product?.optionGroups.find(group=>group.id===groupId)?.options.find(x=>x.id===optionId);
+    const selected=choices.some(c=>c.groupId===groupId&&c.optionId===optionId);
+    if(product && option && isStandardNotebookDiscOption(product,option) && !selected && discQuota && discQuota.remaining<1){
+      setError(discLimitMessage);return;
+    }
     setError("");
     setChoices(old=>{
       const exists=old.some(c=>c.groupId===groupId&&c.optionId===optionId);
@@ -107,6 +114,8 @@ export default function CartItemEditor({item, en, onSave, onCancel}: Props) {
         const groupId=message.slice("Invalid option count:".length).trim();
         const title=product.optionGroups.find(group=>group.id===groupId)?.title??groupId;
         setError(en ? "Please review the required choices in “"+title+"”." : "Revisa las opciones obligatorias de «"+title+"».");
+      }else if(message.startsWith("DISC_LIMIT_EXCEEDED")){
+        setError(discLimitMessage);
       }else setError(message || (en ? "Could not update the cart." : "No se pudo actualizar el carrito."));
     }finally{setSaving(false);}
   }
@@ -122,6 +131,8 @@ export default function CartItemEditor({item, en, onSave, onCancel}: Props) {
       </button>}
       {product.optionGroups.map(group=><fieldset className="cart__editor-group" key={group.id} disabled={saving}>
         <legend>{group.title}{group.required?" *":""}</legend>
+        {discQuota && group.options.some(option=>isStandardNotebookDiscOption(product,option)) &&
+          <p className="cart__disc-quota" role="status">{en?"Discs chosen":"Discos elegidos"}: <strong>{discQuota.selected}/{discQuota.maximum}</strong> · {en?"pink + blue combined":"rosas + azules combinados"}</p>}
         {group.selection==="single"&&!group.required&&<button type="button" className="cart__editor-none"
           onClick={()=>setChoices(old=>old.filter(x=>x.groupId!==group.id))}>
           {en?"No selection":"Sin selección"}
@@ -136,8 +147,17 @@ export default function CartItemEditor({item, en, onSave, onCancel}: Props) {
             </label>
             {active&&option.pricingMode==="perUnit"&&<label className="cart__editor-units">
               {en?"Units":"Unidades"}
-              <input type="number" min={1} max={1000} value={active.units??1} onChange={e=>{
+              <input type="number" min={1}
+                max={discQuota && isStandardNotebookDiscOption(product,option)
+                  ? Math.max(1,discQuota.maximum-(discQuota.selected-(active.units??1))) : 1000}
+                value={active.units??1} onChange={e=>{
                 const units=Number(e.target.value);
+                const isDisc=isStandardNotebookDiscOption(product,option);
+                const max=discQuota && isDisc ? Math.max(1,discQuota.maximum-(discQuota.selected-(active.units??1))) : 1000;
+                if(!Number.isSafeInteger(units)||units<1||units>max){
+                  setError(isDisc ? discLimitMessage : (en?"Enter a valid quantity.":"Ingresa una cantidad válida."));return;
+                }
+                setError("");
                 setChoices(old=>old.map(x=>x.groupId===group.id&&x.optionId===option.id?{...x,units}:x));
               }}/>
             </label>}
