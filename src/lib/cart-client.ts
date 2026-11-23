@@ -9,6 +9,7 @@ const STORAGE_KEY = "athelier:global-cart:v1";
 export type PublicProduct = Pick<CommercialProduct, "id" | "title" | "basePriceCents" | "optionGroups" | "lineIds"> & {
   description?: string;
   imageUrl?: string;
+  galleryImageUrls?: string[];
   currency: "MXN";
   allowBasePurchase?: boolean;
   photoSlots?: PhotoSlot[];
