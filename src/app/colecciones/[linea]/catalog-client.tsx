@@ -91,7 +91,7 @@ function ProductConfigurator({ product }: { product: PublicProduct }) {
         </fieldset>)}
         {(product.photoSlots?.length ?? 0)>0 && <div className="catalog__photos">
           <h4>{en ? "Your photos for personalization" : "Tus fotografías para personalización"}</h4>
-          <p>{en ? "Photos remain private on this device. They are not sent to the studio yet because online orders are not enabled." : "Las fotografías se guardan de forma privada sólo en este dispositivo. Todavía no se envían al taller porque los pedidos en línea no están habilitados."}</p>
+          <p>{en ? "Photos stay private on this device until you send the customization request from the cart. This is not a payment." : "Las fotografías permanecen privadas en este dispositivo hasta que envíes la solicitud desde el carrito. No es un pago."}</p>
           {product.photoSlots?.map(slot=><label key={slot.id} className="catalog__photo-slot">
             {slot.label} <small>({en ? "maximum" : "máximo"} {slot.maxFiles})</small>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple={slot.maxFiles>1}
