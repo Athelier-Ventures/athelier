@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError, publicDatabase, AdminApiError } from "@/lib/admin-server";
 import { findBusinessLine } from "@/lib/brand";
-import { permitsBasePurchase, type CommercialProduct } from "@/lib/commerce";
+import { permitsBasePurchase, photoSlotsForProduct, type CommercialProduct } from "@/lib/commerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: Params) {
         const p=raw as {id:string;title:string;description?:string;imageUrl?:string;allowBasePurchase?:boolean;photoSlots?:unknown[];basePriceCents:number;optionGroups:unknown[];lineIds:string[]};
         return {id:p.id,title:p.title,description:p.description??"",imageUrl:p.imageUrl??"",
           allowBasePurchase:permitsBasePurchase(p as CommercialProduct),
-          photoSlots:p.photoSlots??[],basePriceCents:p.basePriceCents,currency:"MXN",
+          photoSlots:photoSlotsForProduct({title:p.title,photoSlots:p.photoSlots?.length ? p.photoSlots as CommercialProduct['photoSlots'] : undefined}),basePriceCents:p.basePriceCents,currency:"MXN",
           optionGroups:p.optionGroups??[],lineIds:p.lineIds??[]};
       }).filter((p:{lineIds:string[]})=>p.lineIds.includes(linea));
       return NextResponse.json({items},{headers:{"Cache-Control":"no-store","X-Athelier-Preview-Data":"public-catalog-read-only"}});
@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: Params) {
         description: product.description ?? "",
         imageUrl: product.imageUrl ?? "",
         allowBasePurchase: permitsBasePurchase(product as CommercialProduct),
-        photoSlots: Array.isArray(product.photoSlots) ? product.photoSlots : [],
+        photoSlots: photoSlotsForProduct(product as CommercialProduct),
         basePriceCents: product.basePriceCents,
         currency: "MXN",
         optionGroups: product.optionGroups ?? [],

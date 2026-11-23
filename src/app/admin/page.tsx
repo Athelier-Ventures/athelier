@@ -5,7 +5,7 @@ import Link from "next/link";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { browserAuth, googleProvider } from "@/lib/firebase-client";
 import { businessLines, type LineId } from "@/lib/brand";
-import { purchaseTotalCostCents, purchaseUnitCount, weightedUnitCost, configuredUnitPriceCents, materialCostEstimateCents, permitsBasePurchase, type Purchase, type CommercialProduct } from "@/lib/commerce";
+import { purchaseTotalCostCents, purchaseUnitCount, weightedUnitCost, configuredUnitPriceCents, materialCostEstimateCents, permitsBasePurchase, photoSlotsForProduct, type Purchase, type CommercialProduct } from "@/lib/commerce";
 import { inclusiveTaxBreakdown, type VatTreatment } from "@/lib/iva";
 import "./admin.css";
 
@@ -496,7 +496,7 @@ export default function AdminPage() {
               <div className="admin__records">{rows.products.map(item=><div className="admin__record" key={item.id}>
                 <div><strong>{String(item.title)}</strong><small>{String(item.status)} · {(item.lineIds as string[]).join(", ")}</small></div>
                 <strong>{money(Number(item.basePriceCents))}</strong>
-                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),allowBasePurchase:permitsBasePurchase({title:String(item.title),allowBasePurchase:typeof item.allowBasePurchase==="boolean" ? item.allowBasePurchase : undefined}),photoSlots:Array.isArray(item.photoSlots)?item.photoSlots as PhotoSlot[]:[],basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
+                <button type="button" className="admin__button admin__button--ghost" onClick={()=>{setProduct({title:String(item.title),description:String(item.description??""),imageUrl:String(item.imageUrl??""),allowBasePurchase:permitsBasePurchase({title:String(item.title),allowBasePurchase:typeof item.allowBasePurchase==="boolean" ? item.allowBasePurchase : undefined}),photoSlots:photoSlotsForProduct({title:String(item.title),photoSlots:Array.isArray(item.photoSlots)?item.photoSlots as PhotoSlot[]:undefined}),basePriceCents:Number(item.basePriceCents),currency:"MXN",lineIds:(item.lineIds as string[]).filter(isLineId),status:item.status as Draft["status"],optionGroups:item.optionGroups as Group[],baseMaterials:item.baseMaterials as Bill[]});setEditingProduct(item.id);window.scrollTo({top:0,behavior:"smooth"});}}>Editar</button>
                 {item.status==="draft" ? <button type="button" className="admin__button admin__button--ghost" disabled={loading} onClick={()=>void deleteRecord("products",item.id,String(item.title))}>Eliminar borrador</button> :
                  <button type="button" className="admin__button admin__button--ghost" disabled={loading || item.status==="archived"} onClick={()=>void save("products",{title:item.title,description:item.description??"",imageUrl:item.imageUrl??"",allowBasePurchase:item.allowBasePurchase===true,photoSlots:item.photoSlots??[],basePriceCents:item.basePriceCents,currency:"MXN",lineIds:item.lineIds,status:"archived",optionGroups:item.optionGroups,baseMaterials:item.baseMaterials},item.id)}>Archivar</button>}
               </div>)}</div>

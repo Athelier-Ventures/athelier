@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { AdminApiError, publicDatabase } from "@/lib/admin-server";
 import { productImageBucket, verifyImage } from "@/lib/product-image-storage";
-import { configuredUnitPriceCents, type CommercialProduct } from "@/lib/commerce";
+import { configuredUnitPriceCents, photoSlotsForProduct, type CommercialProduct } from "@/lib/commerce";
 
 const id = z.string().uuid();
 const customerItem = z.object({
@@ -80,7 +80,7 @@ export async function verifyRequestItems(items: z.infer<typeof customerItem>[]) 
     try {unitPriceCents=configuredUnitPriceCents({...product,id:doc.id} as CommercialProduct,item.selections);} catch {
       throw new AdminApiError(409,"OPTIONS_CHANGED","Las opciones del producto cambiaron. Actualiza el carrito.");
     }
-    const slots=Array.isArray(product.photoSlots)?product.photoSlots as Array<{id:string;label:string;maxFiles:number}>:[];
+    const slots=photoSlotsForProduct(product as CommercialProduct);
     for (const photo of item.photos) {
       const slot=slots.find(x=>x.id===photo.slotId);
       if (!slot) throw new AdminApiError(400,"INVALID_PHOTO_SLOT","La sección de fotos ya no está disponible.");
