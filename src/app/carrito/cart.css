@@ -46,3 +46,5 @@
   .cart__editor-summary>label{grid-column:1 / -1}
   .cart__editor-option{align-items:flex-start}
 }
+
+.cart__disc-quota{padding:8px 12px;margin:4px 0 10px;border-radius:8px;background:#f1e4db;color:#684439;font:600 12px/1.5 system-ui,sans-serif}.cart__disc-quota strong{font-size:14px}
