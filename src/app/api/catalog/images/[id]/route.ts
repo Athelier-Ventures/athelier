@@ -12,8 +12,11 @@ export async function GET(_request: Request, {params}: Params) {
     if (!/^[0-9a-f-]{36}$/i.test(id)) throw new AdminApiError(404,"NOT_FOUND","Imagen no disponible");
     const imageUrl = "/api/catalog/images/" + id;
     const db = publicDatabase();
-    const linked = await db.collection("admin_products").where("imageUrl", "==", imageUrl).limit(10).get();
-    if (!linked.docs.some(doc => doc.get("status") === "published"))
+    const [main, gallery] = await Promise.all([
+      db.collection("admin_products").where("imageUrl", "==", imageUrl).limit(10).get(),
+      db.collection("admin_products").where("galleryImageUrls", "array-contains", imageUrl).limit(10).get(),
+    ]);
+    if (![...main.docs, ...gallery.docs].some(doc => doc.get("status") === "published"))
       throw new AdminApiError(404,"NOT_FOUND","Imagen no disponible");
     const object = productImageBucket().file("catalog-products/" + id);
     const [metadata] = await object.getMetadata();
